@@ -834,10 +834,10 @@ export default function MidiController() {
                 fullWidth
                 value={gridColumns}
                 onChange={(e) => {
-                  const value = Math.max(1, Math.min(24, parseInt(e.target.value) || 1));
+                  const value = Math.max(1, Math.min(48, parseInt(e.target.value) || 1));
                   handleGridSizeChange(value, gridRows);
                 }}
-                inputProps={{ min: 1, max: 24 }}
+                inputProps={{ min: 1, max: 48 }}
               />
             </Grid>
             <Grid item xs={6}>
@@ -847,10 +847,10 @@ export default function MidiController() {
                 fullWidth
                 value={gridRows}
                 onChange={(e) => {
-                  const value = Math.max(1, Math.min(24, parseInt(e.target.value) || 1));
+                  const value = Math.max(1, Math.min(48, parseInt(e.target.value) || 1));
                   handleGridSizeChange(gridColumns, value);
                 }}
-                inputProps={{ min: 1, max: 24 }}
+                inputProps={{ min: 1, max: 48 }}
               />
             </Grid>
           </Grid>

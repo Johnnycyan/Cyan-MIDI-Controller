@@ -20,6 +20,7 @@ export default function MidiSlider({
   const { sendCC } = useMIDI();
   const [localValue, setLocalValue] = useState(config.value);
   const theme = useTheme();
+  const sliderRef = useRef<HTMLDivElement>(null);
   
   const minVal = config.midi?.min !== undefined ? config.midi.min : 0;
   const maxVal = config.midi?.max !== undefined ? config.midi.max : 127;
@@ -27,23 +28,34 @@ export default function MidiSlider({
   const fillPercentage = ((localValue - minVal) / (maxVal - minVal)) * 100;
   const isVertical = config.orientation !== 'horizontal';
 
-  const sliderContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Calculate the width needed for the rotated input to match the container height
-  const [inputWidth, setInputWidth] = useState('100%');
-  
-  useEffect(() => {
-    if (isVertical && sliderContainerRef.current) {
-      const container = sliderContainerRef.current;
-      // The rotated input needs to be as wide as the container is tall
-      const heightPercent = (container.clientHeight / container.clientWidth) * 100;
-      setInputWidth(`${heightPercent}%`);
-    }
-  }, [isVertical]);
-
   useEffect(() => {
     setLocalValue(config.value);
   }, [config.value]);
+
+  const handleMouseInteraction = (clientX: number, clientY: number) => {
+    if (!sliderRef.current || isEditMode) return;
+
+    const rect = sliderRef.current.getBoundingClientRect();
+    let percentage;
+
+    if (isVertical) {
+      const height = rect.bottom - rect.top;
+      percentage = 1 - ((clientY - rect.top) / height);
+    } else {
+      const width = rect.right - rect.left;
+      percentage = (clientX - rect.left) / width;
+    }
+
+    percentage = Math.max(0, Math.min(1, percentage));
+    const value = Math.round(minVal + percentage * (maxVal - minVal));
+    
+    setLocalValue(value);
+    
+    if (config.midi && selectedMidiOutput) {
+      sendCC(config.midi.channel, config.midi.cc, value);
+    }
+    onChange(value);
+  };
 
   return (
     <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: 1 }}>
@@ -65,7 +77,7 @@ export default function MidiSlider({
       </Typography>
 
       <Box
-        ref={sliderContainerRef}
+        ref={sliderRef}
         sx={{
           position: 'relative',
           flexGrow: 1,
@@ -73,9 +85,26 @@ export default function MidiSlider({
           borderRadius: 1,
           overflow: 'hidden',
           backgroundColor: 'transparent',
+          cursor: 'pointer',
+        }}
+        onMouseDown={(e) => {
+          if (isEditMode) return;
+          
+          handleMouseInteraction(e.clientX, e.clientY);
+          
+          const handleMouseMove = (moveEvent: MouseEvent) => {
+            handleMouseInteraction(moveEvent.clientX, moveEvent.clientY);
+          };
+          
+          const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+          };
+          
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
         }}
       >
-        {/* Fill background */}
         <Box
           sx={{
             position: 'absolute',
@@ -91,11 +120,10 @@ export default function MidiSlider({
               height: '100%',
             }),
             backgroundColor: color,
-            pointerEvents: 'none',
+            transition: 'none',
           }}
         />
         
-        {/* Value display */}
         <Typography
           variant="caption"
           sx={{
@@ -103,46 +131,11 @@ export default function MidiSlider({
             top: '5px',
             right: '5px',
             color: fillPercentage > 80 ? theme.palette.getContrastText(color) : 'text.primary',
-            pointerEvents: 'none',
             zIndex: 1,
           }}
         >
           {localValue}
         </Typography>
-
-        <input
-          type="range"
-          min={minVal}
-          max={maxVal}
-          value={localValue}
-          disabled={isEditMode}
-          onChange={(e) => {
-            const value = parseInt(e.target.value);
-            setLocalValue(value);
-            if (!isEditMode) {
-              if (config.midi && selectedMidiOutput) {
-                sendCC(config.midi.channel, config.midi.cc, value);
-              }
-              onChange(value);
-            }
-          }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: isVertical ? inputWidth : '100%',
-            height: '100%',
-            opacity: 0,
-            margin: 0,
-            cursor: isEditMode ? 'pointer' : 'pointer',
-            WebkitAppearance: 'none',
-            MozAppearance: 'none',
-            ...(isVertical ? {
-              transform: 'rotate(-90deg)',
-              transformOrigin: 'left center',
-            } : {})
-          }}
-        />
       </Box>
     </Box>
   );
