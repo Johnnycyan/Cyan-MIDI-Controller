@@ -1,7 +1,6 @@
 import { Box, useTheme } from '@mui/material';
 import { ControlItem } from '../types/index';
-// Remove unused imports
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import GridItem from './GridItem';
 import { checkOverlap, findAvailablePosition } from '../utils/gridHelpers';
 import { TransitionGroup } from 'react-transition-group';
@@ -54,23 +53,43 @@ export default function MidiControllerGrid({
     startSize: { w: number; h: number };
   } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  // Add the missing state variable
   const [resizeHandleOffset] = useState({ x: 0, y: 0 });
-  // Add new state for preview positioning
   const [dragPreview, setDragPreview] = useState<{
     controlId: string;
     position: { x: number; y: number };
     size: { w: number; h: number };
   } | null>(null);
-  // Track the last valid position for each control during drag
   const [lastValidPositions, setLastValidPositions] = useState<Record<string, {
     position: { x: number; y: number };
     size: { w: number; h: number };
   }>>({});
 
-  // Calculate cell size based on grid dimensions
-  const cellWidth = gridSize.width / columns;
-  const cellHeight = gridSize.height / rows;
+  // Memoize cell dimensions calculation
+  const { cellWidth, cellHeight } = useMemo(() => ({
+    cellWidth: gridSize.width / columns,
+    cellHeight: gridSize.height / rows
+  }), [gridSize.width, gridSize.height, columns, rows]);
+
+  // Memoize controls by ID for quick lookup
+  const controlsById = useMemo(() => {
+    const map: Record<string, ControlItem> = {};
+    controls.forEach(control => {
+      map[control.id] = control;
+    });
+    return map;
+  }, [controls]);
+
+  // Optimize the selection handler
+  const selectControl = useCallback((id: string | null) => {
+    onSelectControl(id);
+  }, [onSelectControl]);
+
+  // Memoize grid background style
+  const gridBackgroundStyle = useMemo(() => ({
+    backgroundImage: isEditMode ? 'linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)' : 'none',
+    backgroundSize: isEditMode ? `${100 / columns}% ${100 / rows}%` : 'auto',
+    border: isEditMode ? '1px dashed rgba(255,255,255,0.1)' : 'none',
+  }), [isEditMode, columns, rows]);
 
   // Update grid size on initial render, on column/row changes, and on window resize
   useEffect(() => {
@@ -418,33 +437,27 @@ export default function MidiControllerGrid({
     };
   }, [dragState, isEditMode, controls, columns, rows, cellWidth, cellHeight, onUpdateControl, dragOffset, lastValidPositions]);
 
-  // Start drag operation for moving a control with improved offset calculation
-  const handleDragStart = (e: React.MouseEvent, controlId: string) => {
-    if (!isEditMode || e.button !== 0) return; // Only left mouse button
-
+  // Optimize the drag handler with useCallback
+  const handleDragStart = useCallback((e: React.MouseEvent, controlId: string) => {
+    if (!isEditMode || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
 
-    const control = controls.find(c => c.id === controlId);
+    const control = controlsById[controlId];
     if (!control || !gridRef.current) return;
 
-    // Calculate the grid rect
     const gridRect = gridRef.current.getBoundingClientRect();
-
-    // Calculate mouse position relative to grid - moved before usage
     const mouseX = e.clientX - gridRect.left;
     const mouseY = e.clientY - gridRect.top;
-
-    // Calculate control position in pixels
+    
     const controlLeft = control.position.x * cellWidth;
     const controlTop = control.position.y * cellHeight;
-
-    // Calculate offset within the control
+    
     const offsetX = mouseX - controlLeft;
     const offsetY = mouseY - controlTop;
 
     setDragOffset({ x: offsetX, y: offsetY });
-
+    
     setDragState({
       controlId,
       type: 'move',
@@ -453,26 +466,19 @@ export default function MidiControllerGrid({
       startPos: { ...control.position },
       startSize: { ...control.size }
     });
-
+    
     onSelectControl(controlId);
+    
+    setLastValidPositions({
+      [controlId]: {
+        position: { ...control.position },
+        size: { ...control.size }
+      }
+    });
+  }, [isEditMode, controlsById, cellWidth, cellHeight, onSelectControl]);
 
-    // Initialize the last valid position when drag starts
-    if (control) {
-      setLastValidPositions({
-        [controlId]: {
-          position: { ...control.position },
-          size: { ...control.size }
-        }
-      });
-    }
-  };
-
-  // Start resize operation with simplified approach
-  const handleResizeStart = (
-    e: React.MouseEvent,
-    controlId: string,
-    handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
-  ) => {
+  // Optimize resize handler with useCallback
+  const handleResizeStart = useCallback((e: React.MouseEvent, controlId: string, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => {
     if (!isEditMode || e.button !== 0) return; // Only left mouse button
 
     e.preventDefault();
@@ -504,7 +510,7 @@ export default function MidiControllerGrid({
         }
       });
     }
-  };
+  }, [isEditMode, controlsById, onSelectControl]);
 
   return (
     <Box
@@ -518,12 +524,9 @@ export default function MidiControllerGrid({
         borderRadius: 1,
         overflow: 'hidden',
         boxShadow: theme.shadows[4],
-        backgroundImage: isEditMode ? 'linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)' : 'none',
-        backgroundSize: isEditMode ? `${100 / columns}% ${100 / rows}%` : 'auto',
-        border: isEditMode ? '1px dashed rgba(255,255,255,0.1)' : 'none',
+        ...gridBackgroundStyle,
       }}
       onClick={(e) => {
-        // Only clear selection when clicking the grid background
         if (e.currentTarget === e.target && isEditMode) {
           onSelectControl(null);
         }
@@ -553,7 +556,7 @@ export default function MidiControllerGrid({
           isEditMode={isEditMode}
           selectedMidiOutput={selectedMidiOutput}
           preview={dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
-          onSelect={() => onSelectControl(control.id)}
+          onSelect={() => selectControl(control.id)}
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}
         />

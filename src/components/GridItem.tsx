@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Box } from '@mui/material';
 import { ControlItem, ControlType } from '../types';
 import MidiSlider from './ControlItems/MidiSlider';
@@ -23,7 +24,7 @@ interface GridItemProps {
   onResizeStart: (e: React.MouseEvent, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => void;
 }
 
-export default function GridItem({
+const GridItem = memo(({
   control,
   cellWidth,
   cellHeight,
@@ -35,7 +36,7 @@ export default function GridItem({
   onSelect,
   onDragStart,
   onResizeStart,
-}: GridItemProps) {
+}: GridItemProps) => {
   const { position, size, type } = control;
   
   // Calculate pixel positions from grid coordinates
@@ -71,14 +72,13 @@ export default function GridItem({
     }
   };
   
-  // Render resize handles with improved positioning
+  // Only render resize handles when selected AND in edit mode
   const renderResizeHandles = () => {
-    if (!isEditMode || !isSelected) return null;
+    if (!isSelected || !isEditMode) return null;
     
     const handleSize = Math.min(16, cellWidth * 0.2, cellHeight * 0.2);
     const halfHandleSize = handleSize / 2;
     
-    // Use more precise positioning for handles 
     const handles = [
       { position: 'nw', cursor: 'nw-resize', top: -halfHandleSize, left: -halfHandleSize },
       { position: 'n', cursor: 'n-resize', top: -halfHandleSize, left: '50%', transform: 'translateX(-50%)' },
@@ -110,16 +110,6 @@ export default function GridItem({
           '&:hover': {
             backgroundColor: 'primary.light',
           },
-          // Add a larger touch target for mobile
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: -4,
-            left: -4,
-            right: -4,
-            bottom: -4,
-            zIndex: -1,
-          }
         }}
         onMouseDown={(e) => onResizeStart(e, handle.position as any)}
         onClick={(e) => e.stopPropagation()}
@@ -148,7 +138,25 @@ export default function GridItem({
       onClick={isEditMode ? onSelect : undefined}
     >
       {renderControl()}
-      {isEditMode && renderResizeHandles()}
+      {renderResizeHandles()}
     </Box>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function for memo
+  // Only re-render if these specific props change
+  return (
+    prevProps.control.id === nextProps.control.id &&
+    prevProps.control.position.x === nextProps.control.position.x &&
+    prevProps.control.position.y === nextProps.control.position.y &&
+    prevProps.control.size.w === nextProps.control.size.w &&
+    prevProps.control.size.h === nextProps.control.size.h &&
+    prevProps.cellWidth === nextProps.cellWidth &&
+    prevProps.cellHeight === nextProps.cellHeight &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isDragging === nextProps.isDragging &&
+    prevProps.isEditMode === nextProps.isEditMode &&
+    prevProps.selectedMidiOutput === nextProps.selectedMidiOutput
+  );
+});
+
+export default GridItem;

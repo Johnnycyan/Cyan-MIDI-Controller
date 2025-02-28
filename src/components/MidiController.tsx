@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import {
   Box,
   AppBar,
@@ -36,13 +36,15 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 // Import components
-import ControlEditorPanel from './ControlEditorPanel';
 import useMIDI from '../hooks/useMIDI';
 import { ControlItem, ControlType, MidiControllerPreset } from '../types/index';
 import { useNotification } from '../context/NotificationContext';
 import { createNewControl, findAvailablePosition, checkOverlap } from '../utils/gridHelpers';
 import MidiControllerGrid from './MidiControllerGrid';
 import PresetManager from './PresetManager';
+
+// Lazy load the editor panel
+const ControlEditorPanel = lazy(() => import('./ControlEditorPanel'));
 
 // Create localStorage utility functions
 const savePresets = (presets: MidiControllerPreset[]): void => {
@@ -114,28 +116,6 @@ export default function MidiController() {
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
   const [showPresetManager, setShowPresetManager] = useState(false);
   const { showNotification } = useNotification();
-
-  // Create a new preset
-  const createNewPreset = () => {
-    const newPreset: MidiControllerPreset = {
-      id: uuidv4(),
-      name: `Preset ${presets.length + 1}`,
-      controls: [],
-      gridSize: {
-        columns: 12,
-        rows: 8
-      }
-    };
-    
-    // Fix for the type error: Using the functional update form of setState
-    setPresets(prevPresets => [...prevPresets, newPreset]);
-    setActivePresetId(newPreset.id);
-    setControls([]);
-    setSelectedControlId(null);
-    setGridColumns(newPreset.gridSize.columns);
-    setGridRows(newPreset.gridSize.rows);
-    showNotification('New preset created', 'success');
-  };
 
   // Load presets from local storage on initial load
   useEffect(() => {
@@ -236,6 +216,28 @@ export default function MidiController() {
     const timer = setTimeout(attemptConnection, 500);
     return () => clearTimeout(timer);
   }, [midiDeviceId, isInitialized, selectOutputDevice, showNotification]);
+
+  // Create a new preset
+  const createNewPreset = () => {
+    const newPreset: MidiControllerPreset = {
+      id: uuidv4(),
+      name: `Preset ${presets.length + 1}`,
+      controls: [],
+      gridSize: {
+        columns: 12,
+        rows: 8
+      }
+    };
+    
+    // Fix for the type error: Using the functional update form of setState
+    setPresets(prevPresets => [...prevPresets, newPreset]);
+    setActivePresetId(newPreset.id);
+    setControls([]);
+    setSelectedControlId(null);
+    setGridColumns(newPreset.gridSize.columns);
+    setGridRows(newPreset.gridSize.rows);
+    showNotification('New preset created', 'success');
+  };
 
   // Select a preset
   const selectPreset = (presetId: string) => {
@@ -645,28 +647,35 @@ export default function MidiController() {
           />
         </Box>
         
-        {/* Side Panel - Only visible in edit mode */}
-        {isEditMode && (
-          <Box sx={{ 
-            width: 350, 
-            borderLeft: '1px solid',
-            borderColor: 'divider',
-            p: 2,
-            overflow: 'auto',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <ControlEditorPanel
-              selectedControl={getSelectedControl()}
-              onUpdateControl={updateControl}
-              onDeleteControl={deleteControl}
-              onMoveControl={moveControl}
-              gridColumns={gridColumns}
-              gridRows={gridRows}
-            />
-          </Box>
-        )}
+        {/* Side Panel with lazy loading */}
+        <Box sx={{ 
+          width: isEditMode ? 350 : 0,
+          borderLeft: isEditMode ? '1px solid' : 'none',
+          borderColor: 'divider',
+          p: isEditMode ? 2 : 0,
+          overflow: 'hidden',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'width 0.3s ease',
+        }}>
+          {isEditMode && selectedControlId && (
+            <Suspense fallback={
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                Loading editor...
+              </Box>
+            }>
+              <ControlEditorPanel
+                selectedControl={getSelectedControl()}
+                onUpdateControl={updateControl}
+                onDeleteControl={deleteControl}
+                onMoveControl={moveControl}
+                gridColumns={gridColumns}
+                gridRows={gridRows}
+              />
+            </Suspense>
+          )}
+        </Box>
       </Box>
       
       {/* Speed Dial for adding controls (only visible in edit mode) */}

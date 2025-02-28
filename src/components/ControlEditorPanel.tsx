@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   Box,
   Paper,
@@ -27,99 +27,98 @@ import {
 } from '@mui/icons-material';
 import { ControlItem, SliderConfig } from '../types/index';
 
-interface ControlEditorPanelProps {
-  selectedControl: ControlItem | null;
-  onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void;
-  onDeleteControl: (id: string) => void;
-  onMoveControl: (id: string, dx: number, dy: number) => void;
-  gridColumns: number;
-  gridRows: number;
-}
-
-interface TabPanelProps {
+// Create an optimized TabPanel component
+const TabPanel = memo(({ children, value, index }: {
   children?: React.ReactNode;
   index: number;
   value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
+}) => {
+  if (value !== index) return null;
+  
   return (
-    <div
+    <Box 
       role="tabpanel"
-      hidden={value !== index}
       id={`control-tabpanel-${index}`}
       aria-labelledby={`control-tab-${index}`}
-      {...other}
-      style={{ padding: '16px 0' }}
+      sx={{ pt: 2 }}
     >
-      {value === index && children}
-    </div>
+      {children}
+    </Box>
   );
-}
+});
 
-export default function ControlEditorPanel({
+// Create memoized form field components to reduce re-renders
+const ColorField = memo(({ value, onChange, label }: {
+  value: string;
+  onChange: (newValue: string) => void;
+  label?: string;
+}) => (
+  <TextField
+    label={label || "Color"}
+    type="color"
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    fullWidth
+    margin="normal"
+    size="small"
+  />
+));
+
+const TextField2 = memo(({ value, onChange, label, ...props }: {
+  value: string;
+  onChange: (newValue: string) => void;
+  label: string;
+  [key: string]: any;
+}) => (
+  <TextField
+    label={label}
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    fullWidth
+    margin="normal"
+    size="small"
+    {...props}
+  />
+));
+
+const NumberField = memo(({ value, onChange, label, min, max }: {
+  value: number;
+  onChange: (newValue: number) => void;
+  label: string;
+  min?: number;
+  max?: number;
+}) => (
+  <TextField
+    label={label}
+    type="number"
+    value={value}
+    onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
+    fullWidth
+    margin="normal"
+    size="small"
+    inputProps={{ min, max }}
+  />
+));
+
+// Create a control editor panel with optimized rendering
+function ControlEditorPanel({
   selectedControl,
   onUpdateControl,
   onDeleteControl,
   onMoveControl,
   gridColumns,
   gridRows
-}: Omit<ControlEditorPanelProps, 'onResizeControl'>) {
+}: {
+  selectedControl: ControlItem | null;
+  onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void;
+  onDeleteControl: (id: string) => void;
+  onMoveControl: (id: string, dx: number, dy: number) => void;
+  gridColumns: number;
+  gridRows: number;
+}) {
   const [activeTab, setActiveTab] = useState(0);
-  const [label, setLabel] = useState('');
-  const [colorValue, setColorValue] = useState('#2196f3');
-  const [midiChannel, setMidiChannel] = useState(1);
-  const [midiCC, setMidiCC] = useState(1);
-  const [midiMin, setMidiMin] = useState(0);
-  const [midiMax, setMidiMax] = useState(127);
 
-  // Special control-type specific settings
-  const [orientation, setOrientation] = useState<'vertical' | 'horizontal'>('vertical');
-  const [onValue, setOnValue] = useState(127);
-  const [offValue, setOffValue] = useState(0);
-  const [showLabel, setShowLabel] = useState(true);
-  const [textVariant, setTextVariant] = useState('body1');
-  const [textAlign, setTextAlign] = useState('center');
-  const [fontWeight, setFontWeight] = useState('normal');
-  const [wrapText, setWrapText] = useState(true);
-
-  // Load control data when a control is selected
-  useEffect(() => {
-    if (selectedControl) {
-      const { config } = selectedControl;
-      setLabel(config.label || '');
-      setColorValue(config.color || '#2196f3');
-      
-      // MIDI settings
-      if (config.midi) {
-        setMidiChannel(config.midi.channel);
-        setMidiCC(config.midi.cc);
-        setMidiMin(config.midi.min !== undefined ? config.midi.min : 0);
-        setMidiMax(config.midi.max !== undefined ? config.midi.max : 127);
-      }
-      
-      // Control-specific settings
-      if (selectedControl.type === 'slider') {
-        setOrientation(config.orientation || 'vertical');
-      } else if (selectedControl.type === 'button') {
-        setOnValue(config.onValue !== undefined ? config.onValue : 127);
-        setOffValue(config.offValue !== undefined ? config.offValue : 0);
-      } else if (selectedControl.type === 'toggle') {
-        setOnValue(config.onValue !== undefined ? config.onValue : 127);
-        setOffValue(config.offValue !== undefined ? config.offValue : 0);
-      } else if (selectedControl.type === 'textbox') {
-        setShowLabel(config.showLabel !== undefined ? config.showLabel : true);
-      } else if (selectedControl.type === 'label') {
-        setTextVariant(config.variant || 'body1');
-        setTextAlign(config.textAlign || 'center');
-        setFontWeight(config.fontWeight || 'normal');
-        setWrapText(config.wrap !== undefined ? config.wrap : true);
-      }
-    }
-  }, [selectedControl]);
-
+  // If no control is selected, show a placeholder
   if (!selectedControl) {
     return (
       <Paper sx={{ p: 2, height: '100%' }}>
@@ -130,145 +129,40 @@ export default function ControlEditorPanel({
     );
   }
 
-  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newLabel = e.target.value;
-    setLabel(newLabel);
+  // Create a handler function that correctly updates the control
+  const updateControlConfig = useCallback((key: string, value: any) => {
     onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, label: newLabel }
+      config: { ...selectedControl.config, [key]: value }
     });
-  };
+  }, [selectedControl?.id, selectedControl?.config, onUpdateControl]);
 
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newColor = e.target.value;
-    setColorValue(newColor);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, color: newColor }
-    });
-  };
-
-  const handleMidiChannelChange = (e: SelectChangeEvent<number>) => {
-    const newChannel = Number(e.target.value);
-    setMidiChannel(newChannel);
+  // Update nested MIDI properties
+  const updateMidiConfig = useCallback((key: string, value: any) => {
     const currentMidi = selectedControl.config.midi || { channel: 1, cc: 1 };
     onUpdateControl(selectedControl.id, {
       config: { 
         ...selectedControl.config, 
-        midi: { ...currentMidi, channel: newChannel } 
+        midi: { ...currentMidi, [key]: value } 
       }
     });
-  };
+  }, [selectedControl?.id, selectedControl?.config, onUpdateControl]);
 
-  const handleMidiCCChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newCC = parseInt(e.target.value, 10);
-    setMidiCC(newCC);
-    const currentMidi = selectedControl.config.midi || { channel: 1, cc: 1 };
+  // Update slider view mode settings
+  const updateSliderViewMode = useCallback((key: string, value: any) => {
+    const currentViewMode = selectedControl.config.sliderConfig?.viewMode || {};
     onUpdateControl(selectedControl.id, {
-      config: { 
-        ...selectedControl.config, 
-        midi: { ...currentMidi, cc: newCC } 
+      config: {
+        ...selectedControl.config,
+        sliderConfig: {
+          ...selectedControl.config.sliderConfig,
+          viewMode: { ...currentViewMode, [key]: value }
+        }
       }
     });
-  };
+  }, [selectedControl?.id, selectedControl?.config, onUpdateControl]);
 
-  const handleMidiMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newMin = parseInt(e.target.value, 10);
-    setMidiMin(newMin);
-    const currentMidi = selectedControl.config.midi || { channel: 1, cc: 1 };
-    onUpdateControl(selectedControl.id, {
-      config: { 
-        ...selectedControl.config, 
-        midi: { ...currentMidi, min: newMin } 
-      }
-    });
-  };
-
-  const handleMidiMaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newMax = parseInt(e.target.value, 10);
-    setMidiMax(newMax);
-    const currentMidi = selectedControl.config.midi || { channel: 1, cc: 1 };
-    onUpdateControl(selectedControl.id, {
-      config: { 
-        ...selectedControl.config, 
-        midi: { ...currentMidi, max: newMax } 
-      }
-    });
-  };
-
-  const handleOrientationChange = (e: SelectChangeEvent<'vertical' | 'horizontal'>) => {
-    const newOrientation = e.target.value as 'vertical' | 'horizontal';
-    setOrientation(newOrientation);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, orientation: newOrientation }
-    });
-  };
-
-  const handleOnValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value, 10);
-    setOnValue(newValue);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, onValue: newValue }
-    });
-  };
-
-  const handleOffValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value, 10);
-    setOffValue(newValue);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, offValue: newValue }
-    });
-  };
-
-  const handleShowLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const show = e.target.checked;
-    setShowLabel(show);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, showLabel: show }
-    });
-  };
-
-  const handleTextVariantChange = (e: SelectChangeEvent<string>) => {
-    const variant = e.target.value;
-    setTextVariant(variant);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, variant }
-    });
-  };
-
-  const handleTextAlignChange = (e: SelectChangeEvent<string>) => {
-    const align = e.target.value;
-    setTextAlign(align);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, textAlign: align }
-    });
-  };
-
-  const handleFontWeightChange = (e: SelectChangeEvent<string>) => {
-    const weight = e.target.value;
-    setFontWeight(weight);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, fontWeight: weight }
-    });
-  };
-
-  const handleWrapTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const wrap = e.target.checked;
-    setWrapText(wrap);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, wrap }
-    });
-  };
-
-  const handleDeleteControl = () => {
-    onDeleteControl(selectedControl.id);
-  };
-
-  const canMoveUp = selectedControl.position.y > 0;
-  const canMoveDown = selectedControl.position.y + selectedControl.size.h < gridRows;
-  const canMoveLeft = selectedControl.position.x > 0;
-  const canMoveRight = selectedControl.position.x + selectedControl.size.w < gridColumns;
-
-  // Add handlers for position and size changes
-  const handlePositionChange = (axis: 'x' | 'y', value: number) => {
+  // Update position
+  const updatePosition = useCallback((axis: 'x' | 'y', value: number) => {
     if (!selectedControl) return;
     
     const newPosition = {
@@ -277,9 +171,10 @@ export default function ControlEditorPanel({
     };
     
     onUpdateControl(selectedControl.id, { position: newPosition });
-  };
+  }, [selectedControl?.id, selectedControl?.position, onUpdateControl]);
 
-  const handleSizeChange = (dimension: 'w' | 'h', value: number) => {
+  // Update size
+  const updateSize = useCallback((dimension: 'w' | 'h', value: number) => {
     if (!selectedControl) return;
     
     const newSize = {
@@ -288,27 +183,13 @@ export default function ControlEditorPanel({
     };
     
     onUpdateControl(selectedControl.id, { size: newSize });
-  };
+  }, [selectedControl?.id, selectedControl?.size, onUpdateControl]);
 
-  const handleSliderSettingsChange = (settings: Partial<SliderConfig>) => {
-    if (!selectedControl) return;
-    
-    const currentViewMode = selectedControl.config.sliderConfig?.viewMode || {};
-    const updatedViewMode = settings.viewMode 
-      ? { ...currentViewMode, ...settings.viewMode }
-      : currentViewMode;
-    
-    onUpdateControl(selectedControl.id, {
-      config: {
-        ...selectedControl.config,
-        sliderConfig: {
-          ...selectedControl.config.sliderConfig,
-          ...settings,
-          ...(Object.keys(updatedViewMode).length > 0 ? { viewMode: updatedViewMode } : {})
-        }
-      }
-    });
-  };
+  // Position constraints
+  const canMoveUp = selectedControl.position.y > 0;
+  const canMoveDown = selectedControl.position.y + selectedControl.size.h < gridRows;
+  const canMoveLeft = selectedControl.position.x > 0;
+  const canMoveRight = selectedControl.position.x + selectedControl.size.w < gridColumns;
 
   return (
     <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -329,24 +210,16 @@ export default function ControlEditorPanel({
 
       <Box sx={{ overflow: 'auto', flexGrow: 1 }}>
         <TabPanel value={activeTab} index={0}>
-          <TextField
+          <TextField2
             label="Label"
-            value={label}
-            onChange={handleLabelChange}
-            fullWidth
-            margin="normal"
-            size="small"
+            value={selectedControl.config.label || ''}
+            onChange={(newValue) => updateControlConfig('label', newValue)}
           />
 
           {selectedControl.type !== 'label' && (
-            <TextField
-              label="Color"
-              type="color"
-              value={colorValue}
-              onChange={handleColorChange}
-              fullWidth
-              margin="normal"
-              size="small"
+            <ColorField
+              value={selectedControl.config.color || '#2196f3'}
+              onChange={(newValue) => updateControlConfig('color', newValue)}
             />
           )}
 
@@ -354,53 +227,39 @@ export default function ControlEditorPanel({
             <Typography variant="subtitle2" gutterBottom>Position & Size</Typography>
             <Grid container spacing={2}>
               <Grid item xs={6}>
-                <TextField
+                <NumberField
                   label="X"
-                  type="number"
-                  value={selectedControl?.position.x ?? 0}
-                  onChange={(e) => handlePositionChange('x', parseInt(e.target.value, 10))}
-                  fullWidth
-                  size="small"
-                  inputProps={{ min: 0, max: gridColumns - (selectedControl?.size.w ?? 1) }}
+                  value={selectedControl.position.x}
+                  onChange={(value) => updatePosition('x', value)}
+                  min={0}
+                  max={gridColumns - selectedControl.size.w}
                 />
               </Grid>
               <Grid item xs={6}>
-                <TextField
+                <NumberField
                   label="Y"
-                  type="number"
-                  value={selectedControl?.position.y ?? 0}
-                  onChange={(e) => handlePositionChange('y', parseInt(e.target.value, 10))}
-                  fullWidth
-                  size="small"
-                  inputProps={{ min: 0, max: gridRows - (selectedControl?.size.h ?? 1) }}
+                  value={selectedControl.position.y}
+                  onChange={(value) => updatePosition('y', value)}
+                  min={0}
+                  max={gridRows - selectedControl.size.h}
                 />
               </Grid>
               <Grid item xs={6}>
-                <TextField
+                <NumberField
                   label="Width"
-                  type="number"
-                  value={selectedControl?.size.w ?? 1}
-                  onChange={(e) => handleSizeChange('w', parseInt(e.target.value, 10))}
-                  fullWidth
-                  size="small"
-                  inputProps={{ 
-                    min: 1, 
-                    max: gridColumns - (selectedControl?.position.x ?? 0) 
-                  }}
+                  value={selectedControl.size.w}
+                  onChange={(value) => updateSize('w', value)}
+                  min={1}
+                  max={gridColumns - selectedControl.position.x}
                 />
               </Grid>
               <Grid item xs={6}>
-                <TextField
+                <NumberField
                   label="Height"
-                  type="number"
-                  value={selectedControl?.size.h ?? 1}
-                  onChange={(e) => handleSizeChange('h', parseInt(e.target.value, 10))}
-                  fullWidth
-                  size="small"
-                  inputProps={{ 
-                    min: 1, 
-                    max: gridRows - (selectedControl?.position.y ?? 0) 
-                  }}
+                  value={selectedControl.size.h}
+                  onChange={(value) => updateSize('h', value)}
+                  min={1}
+                  max={gridRows - selectedControl.position.y}
                 />
               </Grid>
             </Grid>
@@ -409,6 +268,7 @@ export default function ControlEditorPanel({
               <IconButton 
                 onClick={() => onMoveControl(selectedControl.id, 0, -1)}
                 disabled={!canMoveUp}
+                color="primary"
               >
                 <ArrowUpward />
               </IconButton>
@@ -418,6 +278,7 @@ export default function ControlEditorPanel({
               <IconButton 
                 onClick={() => onMoveControl(selectedControl.id, -1, 0)}
                 disabled={!canMoveLeft}
+                color="primary"
               >
                 <ArrowBack />
               </IconButton>
@@ -429,6 +290,7 @@ export default function ControlEditorPanel({
               <IconButton 
                 onClick={() => onMoveControl(selectedControl.id, 1, 0)}
                 disabled={!canMoveRight}
+                color="primary"
               >
                 <ArrowForward />
               </IconButton>
@@ -438,6 +300,7 @@ export default function ControlEditorPanel({
               <IconButton 
                 onClick={() => onMoveControl(selectedControl.id, 0, 1)}
                 disabled={!canMoveDown}
+                color="primary"
               >
                 <ArrowDownward />
               </IconButton>
@@ -449,8 +312,8 @@ export default function ControlEditorPanel({
           <FormControl fullWidth margin="normal" size="small">
             <InputLabel>MIDI Channel</InputLabel>
             <Select
-              value={midiChannel}
-              onChange={handleMidiChannelChange}
+              value={(selectedControl.config.midi?.channel || 1)}
+              onChange={(e) => updateMidiConfig('channel', Number(e.target.value))}
               label="MIDI Channel"
             >
               {Array.from({ length: 16 }, (_, i) => (
@@ -461,39 +324,30 @@ export default function ControlEditorPanel({
             </Select>
           </FormControl>
 
-          <TextField
+          <NumberField
             label="CC Number"
-            type="number"
-            value={midiCC}
-            onChange={handleMidiCCChange}
-            fullWidth
-            margin="normal"
-            size="small"
-            InputProps={{ inputProps: { min: 0, max: 127 } }}
+            value={selectedControl.config.midi?.cc || 1}
+            onChange={(value) => updateMidiConfig('cc', value)}
+            min={0}
+            max={127}
           />
 
           {(selectedControl.type === 'slider' || selectedControl.type === 'textbox') && (
             <>
-              <TextField
+              <NumberField
                 label="Min Value"
-                type="number"
-                value={midiMin}
-                onChange={handleMidiMinChange}
-                fullWidth
-                margin="normal"
-                size="small"
-                InputProps={{ inputProps: { min: 0, max: 127 } }}
+                value={selectedControl.config.midi?.min || 0}
+                onChange={(value) => updateMidiConfig('min', value)}
+                min={0}
+                max={127}
               />
               
-              <TextField
+              <NumberField
                 label="Max Value"
-                type="number"
-                value={midiMax}
-                onChange={handleMidiMaxChange}
-                fullWidth
-                margin="normal"
-                size="small"
-                InputProps={{ inputProps: { min: 0, max: 127 } }}
+                value={selectedControl.config.midi?.max || 127}
+                onChange={(value) => updateMidiConfig('max', value)}
+                min={0}
+                max={127}
               />
             </>
           )}
@@ -505,8 +359,8 @@ export default function ControlEditorPanel({
               <FormControl fullWidth margin="normal" size="small">
                 <InputLabel>Orientation</InputLabel>
                 <Select
-                  value={orientation}
-                  onChange={handleOrientationChange}
+                  value={selectedControl.config.orientation || 'vertical'}
+                  onChange={(e) => updateControlConfig('orientation', e.target.value)}
                   label="Orientation"
                 >
                   <MenuItem value="vertical">Vertical</MenuItem>
@@ -514,139 +368,71 @@ export default function ControlEditorPanel({
                 </Select>
               </FormControl>
 
-              <TextField
+              <NumberField
                 label="Steps"
-                type="number"
-                value={selectedControl.config.sliderConfig?.steps || ''}
-                onChange={(e) => handleSliderSettingsChange({
-                  steps: parseInt(e.target.value) || undefined
-                })}
-                fullWidth
-                margin="normal"
-                size="small"
-                helperText="Leave empty for smooth sliding"
+                value={selectedControl.config.sliderConfig?.steps || 0}
+                onChange={(value) => {
+                  onUpdateControl(selectedControl.id, {
+                    config: {
+                      ...selectedControl.config,
+                      sliderConfig: {
+                        ...selectedControl.config.sliderConfig,
+                        steps: value || undefined
+                      }
+                    }
+                  });
+                }}
               />
               
               <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
                 Value Display Settings
               </Typography>
 
-                <TextField
-                    label="Min Value"
-                    type="number"
-                    value={selectedControl.config.sliderConfig?.viewMode?.minValue ?? ''}
-                    onChange={(e) => {
-                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                        handleSliderSettingsChange({
-                        viewMode: {
-                            ...selectedControl.config.sliderConfig?.viewMode,
-                            minValue: value
-                        }
-                        });
-                    }}
-                    fullWidth
-                    margin="normal"
-                    size="small"
-                />
-                <TextField
-                    label="Max Value"
-                    type="number"
-                    value={selectedControl.config.sliderConfig?.viewMode?.maxValue ?? ''}
-                    onChange={(e) => {
-                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                        handleSliderSettingsChange({
-                        viewMode: {
-                            ...selectedControl.config.sliderConfig?.viewMode,
-                            maxValue: value
-                        }
-                        });
-                    }}
-                    fullWidth
-                    margin="normal"
-                    size="small"
-                />
+              <NumberField
+                label="Min Value"
+                value={selectedControl.config.sliderConfig?.viewMode?.minValue || 0}
+                onChange={(value) => updateSliderViewMode('minValue', value)}
+              />
 
-              <TextField
+              <NumberField
+                label="Max Value"
+                value={selectedControl.config.sliderConfig?.viewMode?.maxValue || 100}
+                onChange={(value) => updateSliderViewMode('maxValue', value)}
+              />
+
+              <TextField2
                 label="Extra Text (units)"
-                value={selectedControl.config.sliderConfig?.viewMode?.extraText ?? ''}
-                onChange={(e) => handleSliderSettingsChange({
-                  viewMode: {
-                    ...selectedControl.config.sliderConfig?.viewMode,
-                    extraText: e.target.value
-                  }
-                })}
-                fullWidth
-                margin="normal"
-                size="small"
+                value={selectedControl.config.sliderConfig?.viewMode?.extraText || ''}
+                onChange={(value) => updateSliderViewMode('extraText', value)}
                 placeholder="e.g. dB, %, Hz"
               />
 
-              <TextField
+              <NumberField
                 label="Decimal Places"
-                type="number"
-                value={selectedControl.config.sliderConfig?.viewMode?.decimalPlaces ?? 1}
-                onChange={(e) => handleSliderSettingsChange({
-                  viewMode: {
-                    ...selectedControl.config.sliderConfig?.viewMode,
-                    decimalPlaces: parseInt(e.target.value) || 0
-                  }
-                })}
-                fullWidth
-                margin="normal"
-                size="small"
-                inputProps={{ min: 0, max: 10 }}
+                value={selectedControl.config.sliderConfig?.viewMode?.decimalPlaces || 1}
+                onChange={(value) => updateSliderViewMode('decimalPlaces', value)}
+                min={0}
+                max={10}
               />
             </>
           )}
 
-          {selectedControl.type === 'button' && (
+          {(selectedControl.type === 'button' || selectedControl.type === 'toggle') && (
             <>        
-              <TextField
+              <NumberField
                 label="On Value"
-                type="number"
-                value={onValue}
-                onChange={handleOnValueChange}
-                fullWidth
-                margin="normal"
-                size="small"
-                InputProps={{ inputProps: { min: 0, max: 127 } }}
+                value={selectedControl.config.onValue || 127}
+                onChange={(value) => updateControlConfig('onValue', value)}
+                min={0}
+                max={127}
               />
               
-              <TextField
+              <NumberField
                 label="Off Value"
-                type="number"
-                value={offValue}
-                onChange={handleOffValueChange}
-                fullWidth
-                margin="normal"
-                size="small"
-                InputProps={{ inputProps: { min: 0, max: 127 } }}
-              />
-            </>
-          )}
-
-          {selectedControl.type === 'toggle' && (
-            <>
-              <TextField
-                label="On Value"
-                type="number"
-                value={onValue}
-                onChange={handleOnValueChange}
-                fullWidth
-                margin="normal"
-                size="small"
-                InputProps={{ inputProps: { min: 0, max: 127 } }}
-              />
-              
-              <TextField
-                label="Off Value"
-                type="number"
-                value={offValue}
-                onChange={handleOffValueChange}
-                fullWidth
-                margin="normal"
-                size="small"
-                InputProps={{ inputProps: { min: 0, max: 127 } }}
+                value={selectedControl.config.offValue || 0}
+                onChange={(value) => updateControlConfig('offValue', value)}
+                min={0}
+                max={127}
               />
             </>
           )}
@@ -655,8 +441,8 @@ export default function ControlEditorPanel({
             <FormControlLabel
               control={
                 <Switch
-                  checked={showLabel}
-                  onChange={handleShowLabelChange}
+                  checked={selectedControl.config.showLabel !== false}
+                  onChange={(e) => updateControlConfig('showLabel', e.target.checked)}
                 />
               }
               label="Show Label"
@@ -669,8 +455,8 @@ export default function ControlEditorPanel({
               <FormControl fullWidth margin="normal" size="small">
                 <InputLabel>Text Variant</InputLabel>
                 <Select
-                  value={textVariant}
-                  onChange={handleTextVariantChange}
+                  value={selectedControl.config.variant || 'body1'}
+                  onChange={(e) => updateControlConfig('variant', e.target.value)}
                   label="Text Variant"
                 >
                   <MenuItem value="h1">Heading 1</MenuItem>
@@ -690,8 +476,8 @@ export default function ControlEditorPanel({
               <FormControl fullWidth margin="normal" size="small">
                 <InputLabel>Text Alignment</InputLabel>
                 <Select
-                  value={textAlign}
-                  onChange={handleTextAlignChange}
+                  value={selectedControl.config.textAlign || 'center'}
+                  onChange={(e) => updateControlConfig('textAlign', e.target.value)}
                   label="Text Alignment"
                 >
                   <MenuItem value="left">Left</MenuItem>
@@ -703,8 +489,8 @@ export default function ControlEditorPanel({
               <FormControl fullWidth margin="normal" size="small">
                 <InputLabel>Font Weight</InputLabel>
                 <Select
-                  value={fontWeight}
-                  onChange={handleFontWeightChange}
+                  value={selectedControl.config.fontWeight || 'normal'}
+                  onChange={(e) => updateControlConfig('fontWeight', e.target.value)}
                   label="Font Weight"
                 >
                   <MenuItem value="normal">Normal</MenuItem>
@@ -716,36 +502,24 @@ export default function ControlEditorPanel({
               <FormControlLabel
                 control={
                   <Switch
-                    checked={wrapText}
-                    onChange={handleWrapTextChange}
+                    checked={selectedControl.config.wrap !== false}
+                    onChange={(e) => updateControlConfig('wrap', e.target.checked)}
                   />
                 }
                 label="Wrap Text"
                 sx={{ mt: 1 }}
               />
 
-              <TextField
+              <ColorField
                 label="Background Color"
-                type="color"
                 value={selectedControl.config.backgroundColor || '#ffffff'}
-                onChange={(e) => {
-                  onUpdateControl(selectedControl.id, {
-                    config: { ...selectedControl.config, backgroundColor: e.target.value }
-                  });
-                }}
-                fullWidth
-                margin="normal"
-                size="small"
+                onChange={(value) => updateControlConfig('backgroundColor', value)}
               />
               
-              <TextField
+              <ColorField
                 label="Text Color"
-                type="color"
-                value={colorValue}
-                onChange={handleColorChange}
-                fullWidth
-                margin="normal"
-                size="small"
+                value={selectedControl.config.color || '#000000'}
+                onChange={(value) => updateControlConfig('color', value)}
               />
             </>
           )}
@@ -758,7 +532,7 @@ export default function ControlEditorPanel({
         variant="contained"
         color="error"
         startIcon={<DeleteIcon />}
-        onClick={handleDeleteControl}
+        onClick={() => onDeleteControl(selectedControl.id)}
         fullWidth
       >
         Delete Control
@@ -766,3 +540,21 @@ export default function ControlEditorPanel({
     </Paper>
   );
 }
+
+// Optimize rendering with memoization
+export default memo(ControlEditorPanel, (prevProps, nextProps) => {
+  // Only re-render if the selected control changes or if grid dimensions change
+  if (prevProps.selectedControl === null && nextProps.selectedControl === null) return true;
+  if (prevProps.selectedControl === null || nextProps.selectedControl === null) return false;
+  
+  return (
+    prevProps.selectedControl.id === nextProps.selectedControl.id &&
+    prevProps.gridColumns === nextProps.gridColumns &&
+    prevProps.gridRows === nextProps.gridRows &&
+    JSON.stringify(prevProps.selectedControl.config) === JSON.stringify(nextProps.selectedControl.config) &&
+    prevProps.selectedControl.position.x === nextProps.selectedControl.position.x &&
+    prevProps.selectedControl.position.y === nextProps.selectedControl.position.y &&
+    prevProps.selectedControl.size.w === nextProps.selectedControl.size.w &&
+    prevProps.selectedControl.size.h === nextProps.selectedControl.size.h
+  );
+});
