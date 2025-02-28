@@ -169,44 +169,25 @@ export default function MidiToggle({
   
   // Create a render function for MIDI info to handle the null check once
   const renderMidiInfo = () => {
-    if (!config.midi) return null;
+    if (!config.midi || !isEditMode) return null;
     
     return (
-      <>
-        <Typography 
-          variant="caption" 
-          sx={{ 
-            position: 'absolute',
-            bottom: '5px',
-            left: '5px',
-            fontSize: '0.6rem',
-            opacity: 0.7,
-            color: checked ? theme.palette.getContrastText(color) : 'text.secondary',
-          }}
-        >
-          CC:{config.midi.cc} CH:{config.midi.channel}
-        </Typography>
-        
-        {/* MIDI Send Status Indicator */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '5px',
-            left: '5px',
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: midiStatus === 'sent' 
-              ? '#4caf50' 
-              : midiStatus === 'error'
-                ? '#f44336'
-                : isConnected
-                  ? '#2196f3'
-                  : '#9e9e9e',
-            opacity: midiStatus === 'ready' ? 0.4 : 1,
-          }}
-        />
-      </>
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          position: 'absolute',
+          bottom: '5px',
+          left: '5px',
+          fontSize: '0.6rem',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          color: 'white',
+          padding: '2px 4px',
+          borderRadius: 1,
+          zIndex: 2,
+        }}
+      >
+        {config.midi.cc} | {config.midi.channel}
+      </Typography>
     );
   };
   

@@ -57,6 +57,14 @@ export default function MidiSlider({
     onChange(value);
   };
 
+  const getDisplayValue = () => {
+    if (isEditMode) {
+      return localValue;
+    }
+    // Convert to percentage
+    return Math.round((localValue - minVal) / (maxVal - minVal) * 100) + '%';
+  };
+
   return (
     <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: 1 }}>
       <Typography
@@ -131,11 +139,34 @@ export default function MidiSlider({
             top: '5px',
             right: '5px',
             color: fillPercentage > 80 ? theme.palette.getContrastText(color) : 'text.primary',
+            backgroundColor: isEditMode ? 'rgba(0,0,0,0.6)' : 'transparent',
+            padding: isEditMode ? '2px 4px' : 0,
+            borderRadius: 1,
             zIndex: 1,
           }}
         >
-          {localValue}
+          {getDisplayValue()}
         </Typography>
+
+        {isEditMode && config.midi && (
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              position: 'absolute',
+              bottom: '5px',
+              left: '5px',
+              fontSize: '0.6rem',
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              color: 'white',
+              padding: '2px 4px',
+              borderRadius: 1,
+              zIndex: 2,
+            }}
+          >
+            {config.midi.cc} | {config.midi.channel}
+          </Typography>
+        )}
+
       </Box>
     </Box>
   );
