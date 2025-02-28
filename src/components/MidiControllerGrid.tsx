@@ -6,6 +6,18 @@ import GridItem from './GridItem';
 import { checkOverlap, findAvailablePosition } from '../utils/gridHelpers';
 import { TransitionGroup } from 'react-transition-group';
 
+// Type for position
+interface Position {
+  x: number;
+  y: number;
+}
+
+// Type for size
+interface Size {
+  w: number;
+  h: number;
+}
+
 interface MidiControllerGridProps {
   controls: ControlItem[];
   columns: number;
@@ -43,13 +55,18 @@ export default function MidiControllerGrid({
   } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   // Add the missing state variable
-  const [resizeHandleOffset, setResizeHandleOffset] = useState({ x: 0, y: 0 });
+  const [resizeHandleOffset] = useState({ x: 0, y: 0 });
   // Add new state for preview positioning
   const [dragPreview, setDragPreview] = useState<{
     controlId: string;
     position: { x: number; y: number };
     size: { w: number; h: number };
   } | null>(null);
+  // Track the last valid position for each control during drag
+  const [lastValidPositions, setLastValidPositions] = useState<Record<string, {
+    position: { x: number; y: number };
+    size: { w: number; h: number };
+  }>>({});
 
   // Calculate cell size based on grid dimensions
   const cellWidth = gridSize.width / columns;
@@ -91,7 +108,7 @@ export default function MidiControllerGrid({
     targetY: number,
     width: number,
     height: number
-  ) => {
+  ): Position => {
     // First check if the target position itself is available
     if (!checkOverlap(
       { x: targetX, y: targetY },
@@ -103,7 +120,6 @@ export default function MidiControllerGrid({
     }
     
     // If not, find the closest available position using a spiral search pattern
-    const originalPos = { x: targetX, y: targetY };
     
     // Try to find a position within a reasonable distance
     const maxDistance = Math.max(columns, rows);
@@ -137,6 +153,19 @@ export default function MidiControllerGrid({
     // If no position is found, use findAvailablePosition as fallback
     return findAvailablePosition(controls, { w: width, h: height }, columns, rows, controlId);
   };
+
+  // Update last valid position when drag starts or preview changes
+  useEffect(() => {
+    if (dragPreview) {
+      setLastValidPositions(prev => ({
+        ...prev,
+        [dragPreview.controlId]: {
+          position: { ...dragPreview.position },
+          size: { ...dragPreview.size }
+        }
+      }));
+    }
+  }, [dragPreview]);
 
   // Handle mouse move during drag operations with improved positioning and previews
   useEffect(() => {
@@ -179,19 +208,47 @@ export default function MidiControllerGrid({
         const clampedX = Math.max(0, Math.min(columns - control.size.w, targetGridX));
         const clampedY = Math.max(0, Math.min(rows - control.size.h, targetGridY));
 
-        // Find nearest available position if there would be an overlap
-        const availablePos = findNearestAvailablePosition(
-          control.id,
-          clampedX,
-          clampedY,
-          control.size.w,
-          control.size.h
+        // Check if the position would cause an overlap
+        const wouldOverlap = checkOverlap(
+          { x: clampedX, y: clampedY },
+          control.size,
+          controls,
+          control.id
         );
 
-        // Update the preview position (for snapping guidelines)
+        // Get the last valid position or use findNearestAvailablePosition
+        let previewPosition: Position; // Add type annotation
+        if (wouldOverlap) {
+          // Use last valid position if available, otherwise find nearest valid position
+          if (lastValidPositions[control.id]) {
+            previewPosition = lastValidPositions[control.id].position;
+          } else {
+            previewPosition = findNearestAvailablePosition(
+              control.id,
+              clampedX,
+              clampedY,
+              control.size.w,
+              control.size.h
+            );
+          }
+        } else {
+          // No overlap, we can use this position
+          previewPosition = { x: clampedX, y: clampedY };
+          
+          // Store this as the last valid position
+          setLastValidPositions(prev => ({
+            ...prev,
+            [control.id]: {
+              position: previewPosition,
+              size: { ...control.size }
+            }
+          }));
+        }
+
+        // Update the preview position
         setDragPreview({
           controlId: control.id,
-          position: availablePos,
+          position: previewPosition,
           size: { ...control.size }
         });
 
@@ -274,28 +331,63 @@ export default function MidiControllerGrid({
           size: { w: newPreciseW, h: newPreciseH }
         });
 
-        // Now calculate the snapped preview position and size
+        // Calculate snapped preview position and size
         const snapX = Math.round(newPreciseX);
         const snapY = Math.round(newPreciseY);
         const snapW = Math.round(newPreciseW);
         const snapH = Math.round(newPreciseH);
 
-        // Find nearest available position if there would be an overlap
-        const availablePos = findNearestAvailablePosition(
-          control.id,
-          snapX,
-          snapY,
-          snapW,
-          snapH
+        // Check if snapped position would cause an overlap
+        const wouldOverlap = checkOverlap(
+          { x: snapX, y: snapY },
+          { w: snapW, h: snapH },
+          controls,
+          control.id
         );
+
+        let previewPosition: Position; // Add type annotation
+        let previewSize: Size; // Add type annotation
+        if (wouldOverlap) {
+          // Use last valid position if available
+          if (lastValidPositions[control.id]) {
+            previewPosition = lastValidPositions[control.id].position;
+            previewSize = lastValidPositions[control.id].size;
+          } else {
+            // Find nearest valid position as fallback
+            previewPosition = findNearestAvailablePosition(
+              control.id,
+              snapX,
+              snapY,
+              snapW,
+              snapH
+            );
+            previewSize = { 
+              w: Math.min(columns - previewPosition.x, snapW),
+              h: Math.min(rows - previewPosition.y, snapH)
+            };
+          }
+        } else {
+          // No overlap, we can use this position and size
+          previewPosition = { x: snapX, y: snapY };
+          previewSize = { 
+            w: Math.min(columns - snapX, snapW),
+            h: Math.min(rows - snapY, snapH)
+          };
+          
+          // Store this as the last valid position/size
+          setLastValidPositions(prev => ({
+            ...prev,
+            [control.id]: {
+              position: previewPosition,
+              size: previewSize
+            }
+          }));
+        }
         
         setDragPreview({
           controlId: control.id,
-          position: availablePos,
-          size: { 
-            w: Math.min(columns - availablePos.x, snapW),
-            h: Math.min(rows - availablePos.y, snapH)
-          }
+          position: previewPosition,
+          size: previewSize
         });
       }
     };
@@ -314,7 +406,7 @@ export default function MidiControllerGrid({
       setDragState(null);
       setDragPreview(null);
       setDragOffset({ x: 0, y: 0 });
-      setResizeHandleOffset({ x: 0, y: 0 });
+      setLastValidPositions({});  // Clear last valid positions
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -324,7 +416,7 @@ export default function MidiControllerGrid({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragState, isEditMode, controls, columns, rows, cellWidth, cellHeight, onUpdateControl, dragOffset, dragPreview]);
+  }, [dragState, isEditMode, controls, columns, rows, cellWidth, cellHeight, onUpdateControl, dragOffset, lastValidPositions]);
 
   // Start drag operation for moving a control with improved offset calculation
   const handleDragStart = (e: React.MouseEvent, controlId: string) => {
@@ -363,6 +455,16 @@ export default function MidiControllerGrid({
     });
 
     onSelectControl(controlId);
+
+    // Initialize the last valid position when drag starts
+    if (control) {
+      setLastValidPositions({
+        [controlId]: {
+          position: { ...control.position },
+          size: { ...control.size }
+        }
+      });
+    }
   };
 
   // Start resize operation with simplified approach
@@ -392,6 +494,16 @@ export default function MidiControllerGrid({
     });
 
     onSelectControl(controlId);
+
+    // Initialize the last valid position when resize starts
+    if (control) {
+      setLastValidPositions({
+        [controlId]: {
+          position: { ...control.position },
+          size: { ...control.size }
+        }
+      });
+    }
   };
 
   return (
