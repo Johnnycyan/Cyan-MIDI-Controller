@@ -563,6 +563,11 @@ export default function MidiController() {
     setEditorAnchorEl(element); // Set anchor for tooltip editor
   };
 
+  // Use the same handler for long press (for touch devices)
+  const handleControlLongPress = (id: string | null, element: HTMLElement | null) => {
+    handleControlRightClick(id, element);
+  };
+
   // Handle closing the editor tooltip
   const handleCloseEditor = () => {
     setEditorAnchorEl(null);
@@ -675,6 +680,7 @@ export default function MidiController() {
             selectedControlId={selectedControlId}
             onSelectControl={handleControlSelect} // Updated to use new handler
             onRightClickControl={handleControlRightClick} // New prop
+            onLongPressControl={handleControlLongPress} // Add this prop
             onUpdateControl={updateControl}
             onMoveControl={moveControl}
             onResizeControl={resizeControl}

@@ -25,6 +25,7 @@ interface MidiControllerGridProps {
   selectedControlId: string | null;
   onSelectControl: (id: string | null, element: HTMLElement | null) => void;
   onRightClickControl?: (id: string | null, element: HTMLElement | null) => void;
+  onLongPressControl?: (id: string | null, element: HTMLElement | null) => void; // New prop
   onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void;
   selectedMidiOutput?: string | null;
   onMoveControl?: (id: string, dx: number, dy: number) => void;
@@ -44,6 +45,7 @@ export default function MidiControllerGrid({
   selectedControlId,
   onSelectControl,
   onRightClickControl,
+  onLongPressControl, // New prop
   onUpdateControl,
   selectedMidiOutput,
   onMoveControl,
@@ -100,6 +102,12 @@ export default function MidiControllerGrid({
 
   // Handle right-click on control
   const handleControlRightClick = useCallback((id: string | null, element: HTMLElement | null) => {
+    onRightClickControl?.(id, element);
+  }, [onRightClickControl]);
+
+  // Handle long press on control
+  const handleControlLongPress = useCallback((id: string | null, element: HTMLElement | null) => {
+    // Use the right-click handler for long press, as they serve the same purpose
     onRightClickControl?.(id, element);
   }, [onRightClickControl]);
 
@@ -595,6 +603,7 @@ export default function MidiControllerGrid({
           preview={!dragState && dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
           onSelect={(element) => selectControl(control.id, element)}
           onContextMenu={(e, element) => handleControlRightClick(control.id, element)}
+          onLongPress={(element) => handleControlLongPress(control.id, element)} // New prop
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}
           transitionSettings={transitionSettings}

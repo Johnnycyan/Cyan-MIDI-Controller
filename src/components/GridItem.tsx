@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react';
+import { memo, useRef, useState, useEffect } from 'react';
 import { Box } from '@mui/material';
 import { ControlItem, ControlType } from '../types';
 import MidiSlider from './ControlItems/MidiSlider';
@@ -23,6 +23,7 @@ interface GridItemProps {
   onDragStart: (e: React.MouseEvent) => void;
   onResizeStart: (e: React.MouseEvent, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => void;
   onContextMenu?: (e: React.MouseEvent, element: HTMLElement | null) => void; // New prop
+  onLongPress?: (element: HTMLElement | null) => void; // New prop for long press
   transitionSettings?: {
     duration: number;
     easing: string;
@@ -42,10 +43,17 @@ const GridItem = memo(({
   onDragStart,
   onResizeStart,
   onContextMenu, // New prop
+  onLongPress, // New prop
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
 }: GridItemProps) => {
   const { position, size, type } = control;
   const itemRef = useRef<HTMLDivElement>(null);
+
+  // Long press detection state
+  const [touchStartTime, setTouchStartTime] = useState<number | null>(null);
+  const [touchStartPosition, setTouchStartPosition] = useState<{x: number, y: number} | null>(null);
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasMovedRef = useRef<boolean>(false);
 
   // Calculate pixel positions from grid coordinates
   const left = position.x * cellWidth;
@@ -157,6 +165,68 @@ const GridItem = memo(({
     }
   };
 
+  // Handle touch events for long press detection
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isEditMode || !onLongPress) return;
+    
+    const touch = e.touches[0];
+    setTouchStartTime(Date.now());
+    setTouchStartPosition({
+      x: touch.clientX,
+      y: touch.clientY
+    });
+    hasMovedRef.current = false;
+    
+    // Set timeout for long press (700ms is standard for most touch interfaces)
+    longPressTimeoutRef.current = setTimeout(() => {
+      if (!hasMovedRef.current) {
+        // If no significant movement, trigger long press
+        onLongPress(itemRef.current);
+      }
+    }, 700);
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPosition || !touchStartTime) return;
+    
+    const touch = e.touches[0];
+    const moveThreshold = 10; // pixels
+    
+    // Check if touch has moved significantly (beyond threshold)
+    if (
+      Math.abs(touch.clientX - touchStartPosition.x) > moveThreshold ||
+      Math.abs(touch.clientY - touchStartPosition.y) > moveThreshold
+    ) {
+      hasMovedRef.current = true;
+      
+      // Clear the long press timeout as user is moving/scrolling
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+        longPressTimeoutRef.current = null;
+      }
+    }
+  };
+  
+  const handleTouchEnd = () => {
+    // Clean up the timeout to prevent memory leaks
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+    
+    setTouchStartTime(null);
+    setTouchStartPosition(null);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Render preview overlay if needed
   const renderPreview = () => {
     if (!preview) return null;
@@ -207,6 +277,11 @@ const GridItem = memo(({
       onMouseDown={isEditMode ? onDragStart : undefined}
       onClick={isEditMode ? handleItemSelect : undefined}
       onContextMenu={handleContextMenu} // Add context menu handler
+      // Add touch event handlers
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {renderControl()}
       {renderResizeHandles()}
