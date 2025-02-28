@@ -3,7 +3,7 @@ import { ControlItem } from '../types/index';
 // Remove unused imports
 import { useState, useRef, useEffect } from 'react';
 import GridItem from './GridItem';
-import { checkOverlap } from '../utils/gridHelpers';
+import { checkOverlap, findAvailablePosition } from '../utils/gridHelpers';
 import { TransitionGroup } from 'react-transition-group';
 
 interface MidiControllerGridProps {
@@ -84,6 +84,60 @@ export default function MidiControllerGrid({
     };
   }, [columns, rows]);
 
+  // Find nearest available position for a control
+  const findNearestAvailablePosition = (
+    controlId: string, 
+    targetX: number, 
+    targetY: number,
+    width: number,
+    height: number
+  ) => {
+    // First check if the target position itself is available
+    if (!checkOverlap(
+      { x: targetX, y: targetY },
+      { w: width, h: height },
+      controls,
+      controlId
+    )) {
+      return { x: targetX, y: targetY };
+    }
+    
+    // If not, find the closest available position using a spiral search pattern
+    const originalPos = { x: targetX, y: targetY };
+    
+    // Try to find a position within a reasonable distance
+    const maxDistance = Math.max(columns, rows);
+    
+    for (let distance = 1; distance <= maxDistance; distance++) {
+      // Check positions in a spiral pattern around the target
+      for (let dx = -distance; dx <= distance; dx++) {
+        for (let dy = -distance; dy <= distance; dy++) {
+          // Skip positions that aren't on the edge of the current spiral distance
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== distance) continue;
+          
+          const testX = targetX + dx;
+          const testY = targetY + dy;
+          
+          // Skip if out of bounds
+          if (testX < 0 || testY < 0 || testX + width > columns || testY + height > rows) continue;
+          
+          // Check if this position is available
+          if (!checkOverlap(
+            { x: testX, y: testY },
+            { w: width, h: height },
+            controls,
+            controlId
+          )) {
+            return { x: testX, y: testY };
+          }
+        }
+      }
+    }
+    
+    // If no position is found, use findAvailablePosition as fallback
+    return findAvailablePosition(controls, { w: width, h: height }, columns, rows, controlId);
+  };
+
   // Handle mouse move during drag operations with improved positioning and previews
   useEffect(() => {
     if (!dragState || !isEditMode) return;
@@ -122,24 +176,22 @@ export default function MidiControllerGrid({
         const targetGridY = Math.floor(mouseGridY - offsetGridY + 0.5);
 
         // Apply constraints for the preview
-        const snapX = Math.max(0, Math.min(columns - control.size.w, targetGridX));
-        const snapY = Math.max(0, Math.min(rows - control.size.h, targetGridY));
+        const clampedX = Math.max(0, Math.min(columns - control.size.w, targetGridX));
+        const clampedY = Math.max(0, Math.min(rows - control.size.h, targetGridY));
 
-        // Check for collisions for the preview
-        const wouldOverlap = checkOverlap(
-          { x: snapX, y: snapY },
-          control.size,
-          controls,
-          control.id
+        // Find nearest available position if there would be an overlap
+        const availablePos = findNearestAvailablePosition(
+          control.id,
+          clampedX,
+          clampedY,
+          control.size.w,
+          control.size.h
         );
 
         // Update the preview position (for snapping guidelines)
         setDragPreview({
           controlId: control.id,
-          position: {
-            x: wouldOverlap ? control.position.x : snapX,
-            y: wouldOverlap ? control.position.y : snapY
-          },
+          position: availablePos,
           size: { ...control.size }
         });
 
@@ -228,22 +280,23 @@ export default function MidiControllerGrid({
         const snapW = Math.round(newPreciseW);
         const snapH = Math.round(newPreciseH);
 
-        // Check for collisions with the snapped preview
-        const wouldOverlap = checkOverlap(
-          { x: snapX, y: snapY },
-          { w: snapW, h: snapH },
-          controls,
-          control.id
+        // Find nearest available position if there would be an overlap
+        const availablePos = findNearestAvailablePosition(
+          control.id,
+          snapX,
+          snapY,
+          snapW,
+          snapH
         );
-
-        // Update the preview to show where it will snap
-        if (!wouldOverlap) {
-          setDragPreview({
-            controlId: control.id,
-            position: { x: snapX, y: snapY },
-            size: { w: snapW, h: snapH }
-          });
-        }
+        
+        setDragPreview({
+          controlId: control.id,
+          position: availablePos,
+          size: { 
+            w: Math.min(columns - availablePos.x, snapW),
+            h: Math.min(rows - availablePos.y, snapH)
+          }
+        });
       }
     };
 

@@ -36,18 +36,33 @@ export const findAvailablePosition = (
   controls: ControlItem[],
   size: Size,
   columns: number,
-  rows: number
+  rows: number,
+  skipControlId?: string,
+  preferredPos?: { x: number, y: number }
 ): Position => {
-  for (let y = 0; y <= rows - size.h; y++) {
-    for (let x = 0; x <= columns - size.w; x++) {
-      const position = { x, y };
-      if (!checkOverlap(position, size, controls)) {
-        return position;
+  // Start with the preferred position or (0,0)
+  let startX = preferredPos?.x ?? 0;
+  let startY = preferredPos?.y ?? 0;
+  
+  // Scan the grid in row-major order, starting from the preferred position
+  for (let y = startY; y < rows; y++) {
+    for (let x = (y === startY ? startX : 0); x <= columns - size.w; x++) {
+      if (!checkOverlap({ x, y }, size, controls, skipControlId)) {
+        return { x, y };
       }
     }
   }
   
-  // If we can't find a position, return 0,0 (will cause overlap)
+  // If no position is found, try from the beginning
+  for (let y = 0; y < startY; y++) {
+    for (let x = 0; x <= columns - size.w; x++) {
+      if (!checkOverlap({ x, y }, size, controls, skipControlId)) {
+        return { x, y };
+      }
+    }
+  }
+  
+  // As a last resort, return (0,0) and deal with overlap elsewhere
   return { x: 0, y: 0 };
 };
 
