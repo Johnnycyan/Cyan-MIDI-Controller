@@ -29,7 +29,6 @@ import {
   Label as LabelIcon,
   TextFields as TextFieldsIcon,
   ToggleOn as ToggleOnIcon,
-  RadioButtonChecked as KnobIcon,
   SmartButton as ButtonIcon,
   PlayArrow as PlayArrowIcon,
   SlideshowOutlined as SliderIcon,
@@ -527,7 +526,6 @@ export default function MidiController() {
   // Speed dial actions for adding controls
   const speedDialActions = [
     { icon: <SliderIcon />, name: 'Slider', action: () => addControl('slider') },
-    { icon: <KnobIcon />, name: 'Knob', action: () => addControl('knob') },
     { icon: <ButtonIcon />, name: 'Button', action: () => addControl('button') },
     { icon: <ToggleOnIcon />, name: 'Toggle', action: () => addControl('toggle') },
     { icon: <TextFieldsIcon />, name: 'Text Box', action: () => addControl('textbox') },

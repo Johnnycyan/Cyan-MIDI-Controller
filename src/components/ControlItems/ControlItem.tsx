@@ -1,7 +1,6 @@
 import { Paper } from '@mui/material';
 import MidiSlider from './MidiSlider';
 import MidiButton from './MidiButton';
-import MidiKnob from './MidiKnob';
 import MidiToggle from './MidiToggle';
 import MidiLabel from './MidiLabel';
 import MidiTextBox from './MidiTextBox';
@@ -45,15 +44,6 @@ export default function ControlItem({
             control={control}
             onChange={handleValueChange}
             isEditMode={isEditMode}
-          />
-        );
-      case 'knob':
-        return (
-          <MidiKnob
-            control={control}
-            onChange={handleValueChange}
-            isEditMode={isEditMode}
-            selectedMidiOutput={selectedMidiOutput}
           />
         );
       case 'toggle':

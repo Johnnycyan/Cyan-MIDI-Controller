@@ -70,9 +70,6 @@ export const createNewControl = (
       size = { w: 1, h: 3 };
       config.orientation = 'vertical';
       break;
-    case 'knob':
-      size = { w: 2, h: 2 };
-      break;
     case 'button':
       size = { w: 2, h: 1 };
       config.buttonType = 'momentary';
@@ -114,8 +111,6 @@ const getDefaultLabel = (type: ControlType): string => {
   switch (type) {
     case 'slider':
       return 'Slider';
-    case 'knob':
-      return 'Knob';
     case 'button':
       return 'Button';
     case 'toggle':

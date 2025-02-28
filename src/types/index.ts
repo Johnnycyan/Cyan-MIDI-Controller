@@ -15,7 +15,7 @@ export interface MidiConfig {
   max?: number;        // Max value (0-127, default 127)
 }
 
-export type ControlType = 'slider' | 'knob' | 'button' | 'toggle' | 'label' | 'textbox';
+export type ControlType = 'slider' | 'button' | 'toggle' | 'label' | 'textbox';
 
 interface SliderViewMode {
   minValue: number;

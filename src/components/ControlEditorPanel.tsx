@@ -472,7 +472,7 @@ export default function ControlEditorPanel({
             InputProps={{ inputProps: { min: 0, max: 127 } }}
           />
 
-          {(selectedControl.type === 'slider' || selectedControl.type === 'knob' || selectedControl.type === 'textbox') && (
+          {(selectedControl.type === 'slider' || selectedControl.type === 'textbox') && (
             <>
               <TextField
                 label="Min Value"
