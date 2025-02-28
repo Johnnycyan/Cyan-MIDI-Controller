@@ -77,7 +77,6 @@ export default function ControlEditorPanel({
 
   // Special control-type specific settings
   const [orientation, setOrientation] = useState<'vertical' | 'horizontal'>('vertical');
-  const [buttonType, setButtonType] = useState<'momentary' | 'toggle'>('momentary');
   const [onValue, setOnValue] = useState(127);
   const [offValue, setOffValue] = useState(0);
   const [showLabel, setShowLabel] = useState(true);
@@ -105,7 +104,6 @@ export default function ControlEditorPanel({
       if (selectedControl.type === 'slider') {
         setOrientation(config.orientation || 'vertical');
       } else if (selectedControl.type === 'button') {
-        setButtonType(config.buttonType || 'momentary');
         setOnValue(config.onValue !== undefined ? config.onValue : 127);
         setOffValue(config.offValue !== undefined ? config.offValue : 0);
       } else if (selectedControl.type === 'toggle') {
@@ -201,14 +199,6 @@ export default function ControlEditorPanel({
     setOrientation(newOrientation);
     onUpdateControl(selectedControl.id, {
       config: { ...selectedControl.config, orientation: newOrientation }
-    });
-  };
-
-  const handleButtonTypeChange = (e: SelectChangeEvent<'momentary' | 'toggle'>) => {
-    const newType = e.target.value as 'momentary' | 'toggle';
-    setButtonType(newType);
-    onUpdateControl(selectedControl.id, {
-      config: { ...selectedControl.config, buttonType: newType }
     });
   };
 
@@ -610,19 +600,7 @@ export default function ControlEditorPanel({
           )}
 
           {selectedControl.type === 'button' && (
-            <>
-              <FormControl fullWidth margin="normal" size="small">
-                <InputLabel>Button Type</InputLabel>
-                <Select
-                  value={buttonType}
-                  onChange={handleButtonTypeChange}
-                  label="Button Type"
-                >
-                  <MenuItem value="momentary">Momentary</MenuItem>
-                  <MenuItem value="toggle">Toggle</MenuItem>
-                </Select>
-              </FormControl>
-              
+            <>        
               <TextField
                 label="On Value"
                 type="number"
