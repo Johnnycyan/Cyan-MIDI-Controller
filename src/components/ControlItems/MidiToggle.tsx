@@ -257,12 +257,18 @@ export default function MidiToggle({
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          transition: 'all 0.2s ease-in-out',
+          transition: 'all 0.1s ease-in-out',
           boxShadow: checked ? theme.shadows[4] : 'none',
+          transform: theme.transitions.create('transform', {
+            duration: '100ms'
+          }),
           position: 'relative',
           '&:hover': {
             opacity: 0.9,
             borderColor: isEditMode ? theme.palette.primary.main : color,
+          },
+          '&:active': {
+            transform: isEditMode ? 'none' : 'scale(0.97)',
           },
         }}
       >
