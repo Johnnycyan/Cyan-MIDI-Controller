@@ -72,14 +72,26 @@ export default function MidiSlider({
     if (!sliderRef.current || isEditMode) return;
 
     const rect = sliderRef.current.getBoundingClientRect();
-    let percentage;
+    const scaleActive = document.activeElement === sliderRef.current;
+    const scale = scaleActive ? 0.97 : 1;
+    
+    // Adjust the rect dimensions based on scale
+    const scaledRect = {
+      top: rect.top + (rect.height * (1 - scale)) / 2,
+      bottom: rect.bottom - (rect.height * (1 - scale)) / 2,
+      left: rect.left + (rect.width * (1 - scale)) / 2,
+      right: rect.right - (rect.width * (1 - scale)) / 2,
+      width: rect.width * scale,
+      height: rect.height * scale
+    };
 
+    let percentage;
     if (isVertical) {
-      const height = rect.bottom - rect.top;
-      percentage = 1 - ((clientY - rect.top) / height);
+      const height = scaledRect.bottom - scaledRect.top;
+      percentage = 1 - ((clientY - scaledRect.top) / height);
     } else {
-      const width = rect.right - rect.left;
-      percentage = (clientX - rect.left) / width;
+      const width = scaledRect.right - scaledRect.left;
+      percentage = (clientX - scaledRect.left) / width;
     }
 
     percentage = Math.max(0, Math.min(1, percentage));
@@ -200,6 +212,14 @@ export default function MidiSlider({
           overflow: 'hidden',
           backgroundColor: 'transparent',
           cursor: isEditMode ? 'default' : 'pointer',
+          transition: theme.transitions.create(['transform', 'box-shadow'], {
+            duration: '100ms'
+          }),
+          boxShadow: theme.shadows[1],
+          '&:active': {
+            transform: isEditMode ? 'none' : 'scale(0.97)',
+            boxShadow: 'none'
+          },
         }}
         onMouseDown={(e) => {
           if (isEditMode) return;
