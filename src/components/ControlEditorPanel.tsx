@@ -334,7 +334,7 @@ export default function ControlEditorPanel({
       >
         <Tab label="Basic" />
         <Tab label="MIDI" />
-        <Tab label="Advanced" />
+        <Tab label="Extra" />
       </Tabs>
 
       <Box sx={{ overflow: 'auto', flexGrow: 1 }}>
@@ -541,44 +541,40 @@ export default function ControlEditorPanel({
                 Value Display Settings
               </Typography>
 
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Min Display Value"
+                <TextField
+                    label="Min Value"
                     type="number"
                     value={selectedControl.config.sliderConfig?.viewMode?.minValue ?? ''}
                     onChange={(e) => {
-                      const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                      handleSliderSettingsChange({
+                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                        handleSliderSettingsChange({
                         viewMode: {
-                          ...selectedControl.config.sliderConfig?.viewMode,
-                          minValue: value
+                            ...selectedControl.config.sliderConfig?.viewMode,
+                            minValue: value
                         }
-                      });
+                        });
                     }}
                     fullWidth
+                    margin="normal"
                     size="small"
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Max Display Value"
+                />
+                <TextField
+                    label="Max Value"
                     type="number"
                     value={selectedControl.config.sliderConfig?.viewMode?.maxValue ?? ''}
                     onChange={(e) => {
-                      const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                      handleSliderSettingsChange({
+                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                        handleSliderSettingsChange({
                         viewMode: {
-                          ...selectedControl.config.sliderConfig?.viewMode,
-                          maxValue: value
+                            ...selectedControl.config.sliderConfig?.viewMode,
+                            maxValue: value
                         }
-                      });
+                        });
                     }}
                     fullWidth
+                    margin="normal"
                     size="small"
-                  />
-                </Grid>
-              </Grid>
+                />
 
               <TextField
                 label="Extra Text (units)"

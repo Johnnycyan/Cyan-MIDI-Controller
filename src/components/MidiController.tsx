@@ -650,7 +650,7 @@ export default function MidiController() {
         {/* Side Panel - Only visible in edit mode */}
         {isEditMode && (
           <Box sx={{ 
-            width: 300, 
+            width: 350, 
             borderLeft: '1px solid',
             borderColor: 'divider',
             p: 2,
