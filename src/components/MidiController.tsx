@@ -664,7 +664,6 @@ export default function MidiController() {
               onUpdateControl={updateControl}
               onDeleteControl={deleteControl}
               onMoveControl={moveControl}
-              onResizeControl={resizeControl}
               gridColumns={gridColumns}
               gridRows={gridRows}
             />

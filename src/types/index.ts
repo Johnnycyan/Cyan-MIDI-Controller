@@ -17,18 +17,33 @@ export interface MidiConfig {
 
 export type ControlType = 'slider' | 'knob' | 'button' | 'toggle' | 'label' | 'textbox';
 
+interface SliderViewMode {
+  minValue: number;
+  maxValue: number;
+  extraText?: string;
+  decimalPlaces?: number;
+}
+
+export interface SliderConfig {
+  steps?: number;
+  viewMode?: Partial<SliderViewMode>;  // Changed to allow partial view mode settings
+}
+
+export interface ControlConfig {
+  label: string;
+  color?: string;
+  midi?: MidiConfig;
+  value: number;
+  [key: string]: any; // For control-specific config
+  sliderConfig?: SliderConfig;
+}
+
 export interface ControlItem {
   id: string;
   type: ControlType;
   position: Position;
   size: Size;
-  config: {
-    label: string;
-    color?: string;
-    midi?: MidiConfig;
-    value: number;
-    [key: string]: any; // For control-specific config
-  };
+  config: ControlConfig;
 }
 
 export interface MidiControllerPreset {

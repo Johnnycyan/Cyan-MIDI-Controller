@@ -25,14 +25,13 @@ import {
   ArrowBack, 
   ArrowForward 
 } from '@mui/icons-material';
-import { ControlItem } from '../types/index';
+import { ControlItem, SliderConfig } from '../types/index';
 
 interface ControlEditorPanelProps {
   selectedControl: ControlItem | null;
   onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void;
   onDeleteControl: (id: string) => void;
   onMoveControl: (id: string, dx: number, dy: number) => void;
-  onResizeControl: (id: string, dw: number, dh: number) => void;
   gridColumns: number;
   gridRows: number;
 }
@@ -65,10 +64,9 @@ export default function ControlEditorPanel({
   onUpdateControl,
   onDeleteControl,
   onMoveControl,
-  onResizeControl,
   gridColumns,
   gridRows
-}: ControlEditorPanelProps) {
+}: Omit<ControlEditorPanelProps, 'onResizeControl'>) {
   const [activeTab, setActiveTab] = useState(0);
   const [label, setLabel] = useState('');
   const [colorValue, setColorValue] = useState('#2196f3');
@@ -302,6 +300,26 @@ export default function ControlEditorPanel({
     onUpdateControl(selectedControl.id, { size: newSize });
   };
 
+  const handleSliderSettingsChange = (settings: Partial<SliderConfig>) => {
+    if (!selectedControl) return;
+    
+    const currentViewMode = selectedControl.config.sliderConfig?.viewMode || {};
+    const updatedViewMode = settings.viewMode 
+      ? { ...currentViewMode, ...settings.viewMode }
+      : currentViewMode;
+    
+    onUpdateControl(selectedControl.id, {
+      config: {
+        ...selectedControl.config,
+        sliderConfig: {
+          ...selectedControl.config.sliderConfig,
+          ...settings,
+          ...(Object.keys(updatedViewMode).length > 0 ? { viewMode: updatedViewMode } : {})
+        }
+      }
+    });
+  };
+
   return (
     <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h6" gutterBottom>
@@ -493,17 +511,106 @@ export default function ControlEditorPanel({
 
         <TabPanel value={activeTab} index={2}>
           {selectedControl.type === 'slider' && (
-            <FormControl fullWidth margin="normal" size="small">
-              <InputLabel>Orientation</InputLabel>
-              <Select
-                value={orientation}
-                onChange={handleOrientationChange}
-                label="Orientation"
-              >
-                <MenuItem value="vertical">Vertical</MenuItem>
-                <MenuItem value="horizontal">Horizontal</MenuItem>
-              </Select>
-            </FormControl>
+            <>
+              <FormControl fullWidth margin="normal" size="small">
+                <InputLabel>Orientation</InputLabel>
+                <Select
+                  value={orientation}
+                  onChange={handleOrientationChange}
+                  label="Orientation"
+                >
+                  <MenuItem value="vertical">Vertical</MenuItem>
+                  <MenuItem value="horizontal">Horizontal</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Steps"
+                type="number"
+                value={selectedControl.config.sliderConfig?.steps || ''}
+                onChange={(e) => handleSliderSettingsChange({
+                  steps: parseInt(e.target.value) || undefined
+                })}
+                fullWidth
+                margin="normal"
+                size="small"
+                helperText="Leave empty for smooth sliding"
+              />
+              
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                Value Display Settings
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Min Display Value"
+                    type="number"
+                    value={selectedControl.config.sliderConfig?.viewMode?.minValue ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                      handleSliderSettingsChange({
+                        viewMode: {
+                          ...selectedControl.config.sliderConfig?.viewMode,
+                          minValue: value
+                        }
+                      });
+                    }}
+                    fullWidth
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Max Display Value"
+                    type="number"
+                    value={selectedControl.config.sliderConfig?.viewMode?.maxValue ?? ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                      handleSliderSettingsChange({
+                        viewMode: {
+                          ...selectedControl.config.sliderConfig?.viewMode,
+                          maxValue: value
+                        }
+                      });
+                    }}
+                    fullWidth
+                    size="small"
+                  />
+                </Grid>
+              </Grid>
+
+              <TextField
+                label="Extra Text (units)"
+                value={selectedControl.config.sliderConfig?.viewMode?.extraText ?? ''}
+                onChange={(e) => handleSliderSettingsChange({
+                  viewMode: {
+                    ...selectedControl.config.sliderConfig?.viewMode,
+                    extraText: e.target.value
+                  }
+                })}
+                fullWidth
+                margin="normal"
+                size="small"
+                placeholder="e.g. dB, %, Hz"
+              />
+
+              <TextField
+                label="Decimal Places"
+                type="number"
+                value={selectedControl.config.sliderConfig?.viewMode?.decimalPlaces ?? 1}
+                onChange={(e) => handleSliderSettingsChange({
+                  viewMode: {
+                    ...selectedControl.config.sliderConfig?.viewMode,
+                    decimalPlaces: parseInt(e.target.value) || 0
+                  }
+                })}
+                fullWidth
+                margin="normal"
+                size="small"
+                inputProps={{ min: 0, max: 10 }}
+              />
+            </>
           )}
 
           {selectedControl.type === 'button' && (

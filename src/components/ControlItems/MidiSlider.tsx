@@ -32,6 +32,31 @@ export default function MidiSlider({
     setLocalValue(config.value);
   }, [config.value]);
 
+  const snapToStep = (value: number) => {
+    if (!config.sliderConfig?.steps) return value;
+    
+    const step = (maxVal - minVal) / config.sliderConfig.steps;
+    return Math.round(value / step) * step;
+  };
+
+  const formatDisplayValue = (value: number) => {
+    if (isEditMode) return value;
+
+    if (config.sliderConfig?.viewMode) {
+      const { minValue, maxValue, extraText, decimalPlaces = 1 } = config.sliderConfig.viewMode;
+      
+      // Check if we have both min and max values defined
+      if (minValue !== undefined && maxValue !== undefined) {
+        const percentage = (value - minVal) / (maxVal - minVal);
+        const displayValue = minValue + (maxValue - minValue) * percentage;
+        return `${displayValue.toFixed(decimalPlaces)}${extraText || ''}`;
+      }
+    }
+
+    // Default percentage display if viewMode is not properly configured
+    return `${Math.round((value - minVal) / (maxVal - minVal) * 100)}%`;
+  };
+
   const handleMouseInteraction = (clientX: number, clientY: number) => {
     if (!sliderRef.current || isEditMode) return;
 
@@ -47,7 +72,10 @@ export default function MidiSlider({
     }
 
     percentage = Math.max(0, Math.min(1, percentage));
-    const value = Math.round(minVal + percentage * (maxVal - minVal));
+    let value = Math.round(minVal + percentage * (maxVal - minVal));
+    
+    // Snap to steps if configured
+    value = snapToStep(value);
     
     setLocalValue(value);
     
@@ -55,14 +83,6 @@ export default function MidiSlider({
       sendCC(config.midi.channel, config.midi.cc, value);
     }
     onChange(value);
-  };
-
-  const getDisplayValue = () => {
-    if (isEditMode) {
-      return localValue;
-    }
-    // Convert to percentage
-    return Math.round((localValue - minVal) / (maxVal - minVal) * 100) + '%';
   };
 
   return (
@@ -145,7 +165,7 @@ export default function MidiSlider({
             zIndex: 1,
           }}
         >
-          {getDisplayValue()}
+          {formatDisplayValue(localValue)}
         </Typography>
 
         {isEditMode && config.midi && (
