@@ -3,6 +3,7 @@ import { Box, Typography, useTheme } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
 import { toggleHandler } from '../../midi/toggleHandler';
+import { saveControlValue, loadControlValue } from '../../utils/controlValueStorage';
 
 interface MidiToggleProps {
   control: ControlItem;
@@ -26,6 +27,7 @@ export default function MidiToggle({
     subscribeToCC, 
     selectInputDevice, 
     selectOutputDevice,
+    sendCC,  // Add this
     devices, 
     isConnected 
   } = useMIDI();
@@ -100,11 +102,27 @@ export default function MidiToggle({
         }
       );
 
+      // Request current value
+      try {
+        sendCC(config.midi.channel || 1, 0x62, config.midi.cc || 1);
+      } catch (err) {
+        console.debug('Value request not supported by device');
+      }
+
       return () => {
         unsubscribe();
       };
     }
   }, [config.midi, selectedMidiOutput, devices, onValue, isEditMode, selectInputDevice, subscribeToCC, onChange]);
+
+  // Load saved value on mount
+  useEffect(() => {
+    const savedValue = loadControlValue(control.id);
+    if (savedValue !== null) {
+      setChecked(savedValue === onValue);
+      onChange(savedValue);
+    }
+  }, [control.id]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -123,6 +141,9 @@ export default function MidiToggle({
     
     const newChecked = !checked;
     const newValue = newChecked ? onValue : offValue;
+    
+    // Save the new value
+    saveControlValue(control.id, newValue);
     
     if (config.midi) {
       const previousValue = config.value;

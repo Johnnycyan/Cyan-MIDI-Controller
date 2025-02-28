@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
+import { saveControlValue, loadControlValue } from '../../utils/controlValueStorage';
 
 interface MidiSliderProps {
   control: ControlItem;
@@ -17,7 +18,7 @@ export default function MidiSlider({
   selectedMidiOutput
 }: MidiSliderProps) {
   const { config } = control;
-  const { sendCC } = useMIDI();
+  const { sendCC, devices, selectInputDevice, subscribeToCC } = useMIDI();
   const [localValue, setLocalValue] = useState(config.value);
   const theme = useTheme();
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -31,6 +32,15 @@ export default function MidiSlider({
   useEffect(() => {
     setLocalValue(config.value);
   }, [config.value]);
+
+  // Load saved value on mount
+  useEffect(() => {
+    const savedValue = loadControlValue(control.id);
+    if (savedValue !== null) {
+      setLocalValue(savedValue);
+      onChange(savedValue);
+    }
+  }, [control.id]);
 
   const snapToStep = (value: number) => {
     if (!config.sliderConfig?.steps) return value;
@@ -78,12 +88,62 @@ export default function MidiSlider({
     value = snapToStep(value);
     
     setLocalValue(value);
+    saveControlValue(control.id, value);
     
     if (config.midi && selectedMidiOutput) {
       sendCC(config.midi.channel, config.midi.cc, value);
     }
     onChange(value);
   };
+
+  // Subscribe to MIDI messages when component mounts
+  useEffect(() => {
+    if (!config.midi || isEditMode) return;
+
+    const loadInitialValue = async () => {
+      try {
+        if (selectedMidiOutput && config.midi) {
+          // Find input device matching the output
+          const outputDevice = devices.find(d => d.id === selectedMidiOutput);
+          if (!outputDevice) return;
+
+          const inputDevice = devices.find(d => 
+            d.type === 'input' && d.name === outputDevice.name
+          );
+
+          if (inputDevice) {
+            // Select input device and subscribe to CC messages
+            selectInputDevice(inputDevice.id);
+            const unsubscribe = subscribeToCC(
+              config.midi.channel,
+              config.midi.cc,
+              (value) => {
+                setLocalValue(value);
+                onChange(value);
+              }
+            );
+
+            // Send a request for the current value if the device supports it
+            // Note: Not all devices support this feature
+            try {
+              const success = sendCC(config.midi.channel, 0x62, config.midi.cc);
+              if (!success) {
+                console.debug('Device might not support value request');
+              }
+            } catch (err) {
+              console.debug('Value request not supported by device');
+            }
+
+            return unsubscribe;
+          }
+        }
+      } catch (err) {
+        console.error('Error setting up MIDI monitoring:', err);
+      }
+    };
+
+    loadInitialValue();
+  }, [config.midi, selectedMidiOutput, isEditMode, devices]);
 
   return (
     <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: 1 }}>
