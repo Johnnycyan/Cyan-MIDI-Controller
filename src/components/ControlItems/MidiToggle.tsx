@@ -9,7 +9,7 @@ import { midiSync } from '../../utils/midiSync';
 interface MidiToggleProps {
   control: ControlItem;
   onChange: (value: number) => void;
-  onSelect?: (id: string) => void;  // Add this prop
+  onSelect?: () => void;  // Changed to accept no parameters
   isEditMode?: boolean;
   isSelected?: boolean;
   selectedMidiOutput?: string | null;
@@ -18,7 +18,7 @@ interface MidiToggleProps {
 export default function MidiToggle({
   control,
   onChange,
-  onSelect,  // Add this prop
+  onSelect,  // Updated type
   isEditMode = false,
   isSelected = false,
   selectedMidiOutput,
@@ -146,7 +146,7 @@ export default function MidiToggle({
     
     if (isEditMode) {
       // In edit mode, select the control
-      onSelect?.(control.id);
+      onSelect?.();
       return;
     }
     

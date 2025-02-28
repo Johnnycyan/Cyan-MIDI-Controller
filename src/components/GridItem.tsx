@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 import { Box } from '@mui/material';
 import { ControlItem, ControlType } from '../types';
 import MidiSlider from './ControlItems/MidiSlider';
@@ -19,9 +19,10 @@ interface GridItemProps {
     position: { x: number; y: number };
     size: { w: number; h: number };
   } | null;
-  onSelect: () => void;
+  onSelect: (element: HTMLElement | null) => void; // Modified to pass element
   onDragStart: (e: React.MouseEvent) => void;
   onResizeStart: (e: React.MouseEvent, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => void;
+  onContextMenu?: (e: React.MouseEvent, element: HTMLElement | null) => void; // New prop
   transitionSettings?: {
     duration: number;
     easing: string;
@@ -40,24 +41,37 @@ const GridItem = memo(({
   onSelect,
   onDragStart,
   onResizeStart,
+  onContextMenu, // New prop
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
 }: GridItemProps) => {
   const { position, size, type } = control;
-  
+  const itemRef = useRef<HTMLDivElement>(null);
+
   // Calculate pixel positions from grid coordinates
   const left = position.x * cellWidth;
   const top = position.y * cellHeight;
   const width = size.w * cellWidth;
   const height = size.h * cellHeight;
   
-  // Control component renderer
+  // Fix the onSelect adapter to match control component expectations
+  const handleControlSelect = () => {
+    if (isEditMode) {
+      onSelect(itemRef.current); // Pass the DOM element for tooltip
+    } else {
+      // Just pass the ID when not in edit mode
+      control.id && control.id;
+    }
+  };
+  
+  // Control component renderer - with adapter for onSelect
   const renderControl = () => {
     const commonProps = {
       control,
       onChange: () => {}, // Will be implemented by actual component
       isEditMode,
       selectedMidiOutput,
-      onSelect,
+      // Fix: Adapt the onSelect signature to match what control components expect
+      onSelect: () => control.id && handleControlSelect(),
       isSelected,
     };
 
@@ -127,8 +141,54 @@ const GridItem = memo(({
     ? 'none' 
     : `all ${transitionSettings.duration}ms ${transitionSettings.easing}`;
 
+  // Handle selection on the wrapper element
+  const handleItemSelect = () => {
+    if (isEditMode) {
+      onSelect(itemRef.current);
+    }
+  };
+
+  // Handle right-click for showing the editor
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isEditMode && onContextMenu) {
+      onContextMenu(e, itemRef.current);
+    }
+  };
+
+  // Render preview overlay if needed
+  const renderPreview = () => {
+    if (!preview) return null;
+    
+    // Calculate preview position and size in pixels
+    const previewLeft = preview.position.x * cellWidth;
+    const previewTop = preview.position.y * cellHeight;
+    const previewWidth = preview.size.w * cellWidth;
+    const previewHeight = preview.size.h * cellHeight;
+    
+    return (
+      <Box
+        sx={{
+          position: 'absolute',
+          left: previewLeft,
+          top: previewTop,
+          width: previewWidth,
+          height: previewHeight,
+          border: '2px dashed',
+          borderColor: 'primary.main',
+          borderRadius: 1,
+          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+          pointerEvents: 'none',
+          zIndex: 5,
+        }}
+      />
+    );
+  };
+
   return (
     <Box
+      ref={itemRef}
       sx={{
         position: 'absolute',
         left,
@@ -139,21 +199,23 @@ const GridItem = memo(({
         border: isSelected && isEditMode ? '2px dashed primary.main' : 'none',
         boxSizing: 'border-box',
         cursor: isEditMode ? 'move' : 'default',
-        transition: transitionStyle, // Use synchronized transition
+        transition: transitionStyle,
         opacity: isDragging ? 0.8 : 1,
         transform: isDragging ? 'scale(1.02)' : 'scale(1)',
         pointerEvents: isDragging && !isEditMode ? 'none' : 'auto',
       }}
       onMouseDown={isEditMode ? onDragStart : undefined}
-      onClick={isEditMode ? onSelect : undefined}
+      onClick={isEditMode ? handleItemSelect : undefined}
+      onContextMenu={handleContextMenu} // Add context menu handler
     >
       {renderControl()}
       {renderResizeHandles()}
+      {renderPreview()}
     </Box>
   );
 }, (prevProps, nextProps) => {
+  // Fix: Update the comparison function to always return a boolean
   // Custom comparison function for memo
-  // Only re-render if these specific props change
   const prevSameProps = (
     prevProps.control.id === nextProps.control.id &&
     prevProps.control.position.x === nextProps.control.position.x &&
@@ -168,12 +230,30 @@ const GridItem = memo(({
     prevProps.selectedMidiOutput === nextProps.selectedMidiOutput
   );
   
-  // Also compare transition settings
-  const sameTransition = 
+  // Fix: Compare preview safely, make sure it returns a boolean
+  let samePreview = false;
+  
+  if (!prevProps.preview && !nextProps.preview) {
+    samePreview = true;
+  } else if (prevProps.preview && nextProps.preview) {
+    samePreview = (
+      prevProps.preview.position.x === nextProps.preview.position.x &&
+      prevProps.preview.position.y === nextProps.preview.position.y &&
+      prevProps.preview.size.w === nextProps.preview.size.w &&
+      prevProps.preview.size.h === nextProps.preview.size.h
+    );
+  } else {
+    samePreview = false; // One is defined and the other is not
+  }
+  
+  // Fix: Compare transition settings safely
+  const sameTransition = (
     prevProps.transitionSettings?.duration === nextProps.transitionSettings?.duration &&
-    prevProps.transitionSettings?.easing === nextProps.transitionSettings?.easing;
-    
-  return prevSameProps && sameTransition;
+    prevProps.transitionSettings?.easing === nextProps.transitionSettings?.easing
+  );
+  
+  // Make sure we return a boolean
+  return !!(prevSameProps && samePreview && sameTransition);
 });
 
 export default GridItem;

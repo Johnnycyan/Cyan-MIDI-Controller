@@ -23,8 +23,9 @@ interface MidiControllerGridProps {
   rows: number;
   isEditMode: boolean;
   selectedControlId: string | null;
-  onSelectControl: (id: string | null) => void;
-  onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void; // Changed from ControlItem['config']
+  onSelectControl: (id: string | null, element: HTMLElement | null) => void;
+  onRightClickControl?: (id: string | null, element: HTMLElement | null) => void;
+  onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void;
   selectedMidiOutput?: string | null;
   onMoveControl?: (id: string, dx: number, dy: number) => void;
   onResizeControl?: (id: string, dw: number, dh: number) => void;
@@ -32,6 +33,7 @@ interface MidiControllerGridProps {
     duration: number;
     easing: string;
   };
+  onDragStateChange?: (isDragging: boolean) => void;
 }
 
 export default function MidiControllerGrid({
@@ -41,9 +43,13 @@ export default function MidiControllerGrid({
   isEditMode,
   selectedControlId,
   onSelectControl,
+  onRightClickControl,
   onUpdateControl,
   selectedMidiOutput,
-  transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
+  onMoveControl,
+  onResizeControl,
+  transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+  onDragStateChange,
 }: MidiControllerGridProps) {
   const theme = useTheme();
   const gridRef = useRef<HTMLDivElement>(null);
@@ -69,6 +75,9 @@ export default function MidiControllerGrid({
     size: { w: number; h: number };
   }>>({});
 
+  // Fix the duplicate preview issue - only show the grid's preview when actively dragging
+  const showPreview = dragState !== null && dragPreview !== null;
+
   // Memoize cell dimensions calculation
   const { cellWidth, cellHeight } = useMemo(() => ({
     cellWidth: gridSize.width / columns,
@@ -85,9 +94,14 @@ export default function MidiControllerGrid({
   }, [controls]);
 
   // Optimize the selection handler
-  const selectControl = useCallback((id: string | null) => {
-    onSelectControl(id);
+  const selectControl = useCallback((id: string | null, element: HTMLElement | null) => {
+    onSelectControl(id, element);
   }, [onSelectControl]);
+
+  // Handle right-click on control
+  const handleControlRightClick = useCallback((id: string | null, element: HTMLElement | null) => {
+    onRightClickControl?.(id, element);
+  }, [onRightClickControl]);
 
   // Memoize grid background style
   const gridBackgroundStyle = useMemo(() => ({
@@ -242,7 +256,7 @@ export default function MidiControllerGrid({
         );
 
         // Get the last valid position or use findNearestAvailablePosition
-        let previewPosition: Position; // Add type annotation
+        let previewPosition: Position;
         if (wouldOverlap) {
           // Use last valid position if available, otherwise find nearest valid position
           if (lastValidPositions[control.id]) {
@@ -370,8 +384,8 @@ export default function MidiControllerGrid({
           control.id
         );
 
-        let previewPosition: Position; // Add type annotation
-        let previewSize: Size; // Add type annotation
+        let previewPosition: Position;
+        let previewSize: Size;
         if (wouldOverlap) {
           // Use last valid position if available
           if (lastValidPositions[control.id]) {
@@ -432,6 +446,9 @@ export default function MidiControllerGrid({
       setDragPreview(null);
       setDragOffset({ x: 0, y: 0 });
       setLastValidPositions({});  // Clear last valid positions
+
+      // Signal that dragging has ended
+      onDragStateChange?.(false);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -441,7 +458,7 @@ export default function MidiControllerGrid({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragState, isEditMode, controls, columns, rows, cellWidth, cellHeight, onUpdateControl, dragOffset, lastValidPositions]);
+  }, [dragState, isEditMode, controls, columns, rows, cellWidth, cellHeight, onUpdateControl, dragOffset, lastValidPositions, onDragStateChange]);
 
   // Optimize the drag handler with useCallback
   const handleDragStart = useCallback((e: React.MouseEvent, controlId: string) => {
@@ -473,7 +490,7 @@ export default function MidiControllerGrid({
       startSize: { ...control.size }
     });
     
-    onSelectControl(controlId);
+    onSelectControl(controlId, e.currentTarget as HTMLElement);
     
     setLastValidPositions({
       [controlId]: {
@@ -481,7 +498,10 @@ export default function MidiControllerGrid({
         size: { ...control.size }
       }
     });
-  }, [isEditMode, controlsById, cellWidth, cellHeight, onSelectControl]);
+
+    // Signal that dragging has started
+    onDragStateChange?.(true);
+  }, [isEditMode, controlsById, cellWidth, cellHeight, onSelectControl, onDragStateChange]);
 
   // Optimize resize handler with useCallback
   const handleResizeStart = useCallback((e: React.MouseEvent, controlId: string, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => {
@@ -490,7 +510,7 @@ export default function MidiControllerGrid({
     e.preventDefault();
     e.stopPropagation();
 
-    const control = controls.find(c => c.id === controlId);
+    const control = controlsById[controlId];
     if (!control || !gridRef.current) return;
 
     // No need to calculate complex handle offsets
@@ -505,7 +525,7 @@ export default function MidiControllerGrid({
       startSize: { ...control.size }
     });
 
-    onSelectControl(controlId);
+    onSelectControl(controlId, e.currentTarget as HTMLElement);
 
     // Initialize the last valid position when resize starts
     if (control) {
@@ -516,7 +536,10 @@ export default function MidiControllerGrid({
         }
       });
     }
-  }, [isEditMode, controlsById, onSelectControl]);
+
+    // Signal that resizing (dragging) has started
+    onDragStateChange?.(true);
+  }, [isEditMode, controlsById, onSelectControl, onDragStateChange]);
 
   return (
     <Box
@@ -531,11 +554,16 @@ export default function MidiControllerGrid({
         overflow: 'hidden',
         boxShadow: theme.shadows[4],
         ...gridBackgroundStyle,
-        transition: `all ${transitionSettings.duration}ms ${transitionSettings.easing}`, // Ensure transition is applied
       }}
       onClick={(e) => {
         if (e.currentTarget === e.target && isEditMode) {
-          onSelectControl(null);
+          onSelectControl(null, null);
+        }
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault(); // Prevent browser context menu
+        if (e.currentTarget === e.target && isEditMode) {
+          onSelectControl(null, null); // Deselect when right-clicking background
         }
       }}
     >
@@ -562,16 +590,19 @@ export default function MidiControllerGrid({
           isDragging={dragState?.controlId === control.id}
           isEditMode={isEditMode}
           selectedMidiOutput={selectedMidiOutput}
-          preview={dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
-          onSelect={() => selectControl(control.id)}
+          // Only pass preview to the GridItem if we're NOT actively dragging
+          // This prevents duplicate previews when dragging
+          preview={!dragState && dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
+          onSelect={(element) => selectControl(control.id, element)}
+          onContextMenu={(e, element) => handleControlRightClick(control.id, element)}
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}
           transitionSettings={transitionSettings}
         />
       ))}
 
-      {/* Show grid snap preview */}
-      {dragPreview && (
+      {/* Only show grid snap preview during active dragging */}
+      {showPreview && dragPreview && (
         <Box
           sx={{
             position: 'absolute',

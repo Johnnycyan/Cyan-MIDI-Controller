@@ -8,7 +8,7 @@ import { midiSync } from '../../utils/midiSync';
 interface MidiButtonProps {
   control: ControlItem;
   onChange: (value: number) => void;
-  onSelect?: (id: string) => void;
+  onSelect?: () => void;  // Changed to accept no parameters
   isEditMode?: boolean;
   isSelected?: boolean;
   selectedMidiOutput?: string | null;
@@ -17,7 +17,7 @@ interface MidiButtonProps {
 export default function MidiButton({
   control,
   onChange,
-  onSelect,
+  onSelect,  // Updated type
   isEditMode = false,
   isSelected = false,
   selectedMidiOutput,
@@ -90,7 +90,7 @@ export default function MidiButton({
   const handleMouseDown = async (e: React.MouseEvent) => {
     // In edit mode, we delegate the event handling to the parent
     if (isEditMode) {
-      onSelect?.(control.id);
+      onSelect?.();
       // Important: Don't stop propagation in edit mode
       return;
     }

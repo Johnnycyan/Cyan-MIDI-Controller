@@ -42,6 +42,7 @@ import { useNotification } from '../context/NotificationContext';
 import { createNewControl, findAvailablePosition, checkOverlap } from '../utils/gridHelpers';
 import MidiControllerGrid from './MidiControllerGrid';
 import PresetManager from './PresetManager';
+import ControlTooltipEditor from './ControlTooltipEditor';
 
 // Lazy load the editor panel
 const ControlEditorPanel = lazy(() => import('./ControlEditorPanel'));
@@ -117,9 +118,11 @@ export default function MidiController() {
   const [showPresetManager, setShowPresetManager] = useState(false);
   const { showNotification } = useNotification();
 
-  // Add transition settings as constants to ensure consistency
-  const transitionDuration = 300; // 300ms transition
-  const transitionEasing = 'cubic-bezier(0.4, 0, 0.2, 1)'; // Material UI's standard easing
+  // Add state for tracking anchor element for tooltip
+  const [editorAnchorEl, setEditorAnchorEl] = useState<HTMLElement | null>(null);
+
+  // Add state for tracking if a control is being dragged
+  const [isDragging, setIsDragging] = useState(false);
 
   // Load presets from local storage on initial load
   useEffect(() => {
@@ -545,6 +548,32 @@ export default function MidiController() {
     showNotification('Refreshing MIDI connections...', 'info');
   };
 
+  // Handle control selection with tooltip positioning - show tooltip only on right-click
+  const handleControlSelect = (id: string | null, element: HTMLElement | null) => {
+    setSelectedControlId(id);
+    // Don't set editor anchor element here, only do it on right-click
+    if (!element) {
+      setEditorAnchorEl(null); // Clear anchor if deselecting
+    }
+  };
+
+  // Handle context menu (right-click) for showing the editor
+  const handleControlRightClick = (id: string | null, element: HTMLElement | null) => {
+    setSelectedControlId(id);
+    setEditorAnchorEl(element); // Set anchor for tooltip editor
+  };
+
+  // Handle closing the editor tooltip
+  const handleCloseEditor = () => {
+    setEditorAnchorEl(null);
+    // Don't clear the selectedControlId here so the control remains selected
+  };
+
+  // Modify grid to track dragging state
+  const handleDragStateChange = (isDragging: boolean) => {
+    setIsDragging(isDragging);
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* App Bar */}
@@ -636,8 +665,7 @@ export default function MidiController() {
           p: 2,
           overflow: 'hidden',
           height: '100%',
-          width: isEditMode ? 'calc(100% - 350px)' : '100%', // Adjust width based on panel state
-          transition: `width ${transitionDuration}ms ${transitionEasing}`,
+          width: '100%', // Always full width
         }}>
           <MidiControllerGrid
             controls={controls}
@@ -645,55 +673,28 @@ export default function MidiController() {
             rows={gridRows}
             isEditMode={isEditMode}
             selectedControlId={selectedControlId}
-            onSelectControl={setSelectedControlId}
-            onUpdateControl={updateControl}  // Changed to use updateControl instead of updateControlConfig
-            onMoveControl={moveControl}      // Add this
-            onResizeControl={resizeControl}  // Add this
+            onSelectControl={handleControlSelect} // Updated to use new handler
+            onRightClickControl={handleControlRightClick} // New prop
+            onUpdateControl={updateControl}
+            onMoveControl={moveControl}
+            onResizeControl={resizeControl}
             selectedMidiOutput={midiDeviceId}
-            transitionSettings={{
-              duration: transitionDuration,
-              easing: transitionEasing
-            }}
+            onDragStateChange={handleDragStateChange} // New prop
           />
         </Box>
         
-        {/* Side Panel with synchronized transition */}
-        <Box sx={{ 
-          position: 'absolute',
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 350, // Fixed width
-          transform: isEditMode ? 'translateX(0)' : 'translateX(100%)', // Slide in/out
-          borderLeft: '1px solid',
-          borderColor: 'divider',
-          p: 2,
-          overflow: 'hidden',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          transition: `transform ${transitionDuration}ms ${transitionEasing}`,
-          opacity: isEditMode ? 1 : 0, // Fade in/out
-          zIndex: 100,
-          backgroundColor: theme => theme.palette.background.paper,
-        }}>
-          {isEditMode && selectedControlId && (
-            <Suspense fallback={
-              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
-                Loading editor...
-              </Box>
-            }>
-              <ControlEditorPanel
-                selectedControl={getSelectedControl()}
-                onUpdateControl={updateControl}
-                onDeleteControl={deleteControl}
-                onMoveControl={moveControl}
-                gridColumns={gridColumns}
-                gridRows={gridRows}
-              />
-            </Suspense>
-          )}
-        </Box>
+        {/* Tooltip Editor - replaces sidebar */}
+        <ControlTooltipEditor
+          anchorEl={editorAnchorEl}
+          selectedControl={getSelectedControl()}
+          onClose={handleCloseEditor}
+          onUpdateControl={updateControl}
+          onDeleteControl={deleteControl}
+          onMoveControl={moveControl}
+          gridColumns={gridColumns}
+          gridRows={gridRows}
+          isDragging={isDragging} // Pass drag state
+        />
       </Box>
       
       {/* Speed Dial for adding controls (only visible in edit mode) */}
