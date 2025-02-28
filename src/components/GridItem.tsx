@@ -22,6 +22,10 @@ interface GridItemProps {
   onSelect: () => void;
   onDragStart: (e: React.MouseEvent) => void;
   onResizeStart: (e: React.MouseEvent, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => void;
+  transitionSettings?: {
+    duration: number;
+    easing: string;
+  };
 }
 
 const GridItem = memo(({
@@ -36,6 +40,7 @@ const GridItem = memo(({
   onSelect,
   onDragStart,
   onResizeStart,
+  transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
 }: GridItemProps) => {
   const { position, size, type } = control;
   
@@ -117,6 +122,11 @@ const GridItem = memo(({
     ));
   };
 
+  // Create transition string with configurable values
+  const transitionStyle = isDragging 
+    ? 'none' 
+    : `all ${transitionSettings.duration}ms ${transitionSettings.easing}`;
+
   return (
     <Box
       sx={{
@@ -129,7 +139,7 @@ const GridItem = memo(({
         border: isSelected && isEditMode ? '2px dashed primary.main' : 'none',
         boxSizing: 'border-box',
         cursor: isEditMode ? 'move' : 'default',
-        transition: isDragging ? 'none' : 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: transitionStyle, // Use synchronized transition
         opacity: isDragging ? 0.8 : 1,
         transform: isDragging ? 'scale(1.02)' : 'scale(1)',
         pointerEvents: isDragging && !isEditMode ? 'none' : 'auto',
@@ -144,7 +154,7 @@ const GridItem = memo(({
 }, (prevProps, nextProps) => {
   // Custom comparison function for memo
   // Only re-render if these specific props change
-  return (
+  const prevSameProps = (
     prevProps.control.id === nextProps.control.id &&
     prevProps.control.position.x === nextProps.control.position.x &&
     prevProps.control.position.y === nextProps.control.position.y &&
@@ -157,6 +167,13 @@ const GridItem = memo(({
     prevProps.isEditMode === nextProps.isEditMode &&
     prevProps.selectedMidiOutput === nextProps.selectedMidiOutput
   );
+  
+  // Also compare transition settings
+  const sameTransition = 
+    prevProps.transitionSettings?.duration === nextProps.transitionSettings?.duration &&
+    prevProps.transitionSettings?.easing === nextProps.transitionSettings?.easing;
+    
+  return prevSameProps && sameTransition;
 });
 
 export default GridItem;

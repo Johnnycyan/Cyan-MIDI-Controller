@@ -117,6 +117,10 @@ export default function MidiController() {
   const [showPresetManager, setShowPresetManager] = useState(false);
   const { showNotification } = useNotification();
 
+  // Add transition settings as constants to ensure consistency
+  const transitionDuration = 300; // 300ms transition
+  const transitionEasing = 'cubic-bezier(0.4, 0, 0.2, 1)'; // Material UI's standard easing
+
   // Load presets from local storage on initial load
   useEffect(() => {
     const loadedPresets = loadPresets();
@@ -352,7 +356,7 @@ export default function MidiController() {
     showNotification('Preset saved', 'success');
   };
   
-  // Toggle edit mode
+  // Toggle edit mode with animation coordination
   const toggleEditMode = () => {
     if (isEditMode) {
       // Exiting edit mode - save the changes
@@ -626,12 +630,14 @@ export default function MidiController() {
           </Box>
         )}
         
-        {/* Grid Area */}
+        {/* Grid Area - Add synchronized transition */}
         <Box sx={{ 
           flexGrow: 1, 
           p: 2,
           overflow: 'hidden',
-          height: '100%'
+          height: '100%',
+          width: isEditMode ? 'calc(100% - 350px)' : '100%', // Adjust width based on panel state
+          transition: `width ${transitionDuration}ms ${transitionEasing}`,
         }}>
           <MidiControllerGrid
             controls={controls}
@@ -644,20 +650,32 @@ export default function MidiController() {
             onMoveControl={moveControl}      // Add this
             onResizeControl={resizeControl}  // Add this
             selectedMidiOutput={midiDeviceId}
+            transitionSettings={{
+              duration: transitionDuration,
+              easing: transitionEasing
+            }}
           />
         </Box>
         
-        {/* Side Panel with lazy loading */}
+        {/* Side Panel with synchronized transition */}
         <Box sx={{ 
-          width: isEditMode ? 350 : 0,
-          borderLeft: isEditMode ? '1px solid' : 'none',
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: 350, // Fixed width
+          transform: isEditMode ? 'translateX(0)' : 'translateX(100%)', // Slide in/out
+          borderLeft: '1px solid',
           borderColor: 'divider',
-          p: isEditMode ? 2 : 0,
+          p: 2,
           overflow: 'hidden',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          transition: 'width 0.3s ease',
+          transition: `transform ${transitionDuration}ms ${transitionEasing}`,
+          opacity: isEditMode ? 1 : 0, // Fade in/out
+          zIndex: 100,
+          backgroundColor: theme => theme.palette.background.paper,
         }}>
           {isEditMode && selectedControlId && (
             <Suspense fallback={

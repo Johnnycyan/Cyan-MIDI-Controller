@@ -28,6 +28,10 @@ interface MidiControllerGridProps {
   selectedMidiOutput?: string | null;
   onMoveControl?: (id: string, dx: number, dy: number) => void;
   onResizeControl?: (id: string, dw: number, dh: number) => void;
+  transitionSettings?: {
+    duration: number;
+    easing: string;
+  };
 }
 
 export default function MidiControllerGrid({
@@ -39,6 +43,7 @@ export default function MidiControllerGrid({
   onSelectControl,
   onUpdateControl,
   selectedMidiOutput,
+  transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
 }: MidiControllerGridProps) {
   const theme = useTheme();
   const gridRef = useRef<HTMLDivElement>(null);
@@ -89,7 +94,8 @@ export default function MidiControllerGrid({
     backgroundImage: isEditMode ? 'linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px)' : 'none',
     backgroundSize: isEditMode ? `${100 / columns}% ${100 / rows}%` : 'auto',
     border: isEditMode ? '1px dashed rgba(255,255,255,0.1)' : 'none',
-  }), [isEditMode, columns, rows]);
+    transition: `all ${transitionSettings.duration}ms ${transitionSettings.easing}`,
+  }), [isEditMode, columns, rows, transitionSettings]);
 
   // Update grid size on initial render, on column/row changes, and on window resize
   useEffect(() => {
@@ -525,6 +531,7 @@ export default function MidiControllerGrid({
         overflow: 'hidden',
         boxShadow: theme.shadows[4],
         ...gridBackgroundStyle,
+        transition: `all ${transitionSettings.duration}ms ${transitionSettings.easing}`, // Ensure transition is applied
       }}
       onClick={(e) => {
         if (e.currentTarget === e.target && isEditMode) {
@@ -559,6 +566,7 @@ export default function MidiControllerGrid({
           onSelect={() => selectControl(control.id)}
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}
+          transitionSettings={transitionSettings}
         />
       ))}
 
