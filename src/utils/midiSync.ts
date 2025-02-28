@@ -1,10 +1,5 @@
 type SyncCallback = (value: number) => void;
 
-interface SyncKey {
-  channel: number;
-  cc: number;
-}
-
 class MidiSync {
   private subscribers: Map<string, Set<SyncCallback>> = new Map();
 

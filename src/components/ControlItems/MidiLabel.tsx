@@ -1,4 +1,4 @@
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { ControlItem } from '../../types/index';
 
 interface MidiLabelProps {

@@ -1,7 +1,6 @@
 import { Box, useTheme } from '@mui/material';
 import { ControlItem } from '../types/index';
 import MidiSlider from './ControlItems/MidiSlider';
-import MidiKnob from './ControlItems/MidiKnob';
 import MidiButton from './ControlItems/MidiButton';
 import MidiToggle from './ControlItems/MidiToggle';
 import MidiTextBox from './ControlItems/MidiTextBox';
@@ -29,8 +28,6 @@ export default function MidiControllerGrid({
   onSelectControl,
   onUpdateControl,
   selectedMidiOutput,
-  onMoveControl,
-  onResizeControl,
 }: MidiControllerGridProps) {
   const theme = useTheme();
   
@@ -86,21 +83,6 @@ export default function MidiControllerGrid({
             }}
           >
             <MidiSlider {...commonProps} />
-          </Box>
-        );
-      case 'knob':
-        return (
-          <Box 
-            key={control.id} 
-            sx={controlSx} 
-            onClick={(e) => {
-              if (isEditMode) {
-                e.stopPropagation();
-                onSelectControl(control.id);
-              }
-            }}
-          >
-            <MidiKnob {...commonProps} />
           </Box>
         );
       case 'button':

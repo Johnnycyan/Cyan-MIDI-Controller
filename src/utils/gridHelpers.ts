@@ -1,4 +1,4 @@
-import { ControlItem, Position, Size, MidiConfig, ControlType } from '../types/index';
+import { ControlItem, Position, Size, ControlType } from '../types/index';
 import { v4 as uuidv4 } from 'uuid';
 
 // Generate grid template for CSS grid
@@ -54,9 +54,7 @@ export const findAvailablePosition = (
 // Create a new control with default settings based on type
 export const createNewControl = (
   type: ControlType,
-  position: Position,
-  gridColumns: number = 12,
-  gridRows: number = 8
+  position: Position
 ): ControlItem => {
   const id = uuidv4();
   let size: Size;

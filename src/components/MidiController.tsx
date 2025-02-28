@@ -369,7 +369,7 @@ export default function MidiController() {
     const defaultSize = type === 'slider' ? { w: 1, h: 3 } : { w: 2, h: 1 };
     const position = findAvailablePosition(controls, defaultSize, gridColumns, gridRows);
     
-    const newControl = createNewControl(type, position, gridColumns, gridRows);
+    const newControl = createNewControl(type, position);
     setControls([...controls, newControl]);
     setSelectedControlId(newControl.id);
     setSpeedDialOpen(false);

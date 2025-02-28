@@ -35,7 +35,7 @@ export default function MidiButton({
   const offValue = config.midi?.min !== undefined ? config.midi.min : 0;
   
   const [isPressed, setIsPressed] = useState(false);
-  const [midiStatus, setMidiStatus] = useState<'ready'|'sent'|'error'>('ready');
+  const [_, setMidiStatus] = useState<'ready'|'sent'|'error'>('ready');
 
   // Add MIDI monitoring setup
   useEffect(() => {
