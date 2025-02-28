@@ -2,135 +2,207 @@ import { useState, useEffect } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
+import { saveControlValue } from '../../utils/controlValueStorage';
+import { midiSync } from '../../utils/midiSync';
 
 interface MidiButtonProps {
   control: ControlItem;
   onChange: (value: number) => void;
+  onSelect?: (id: string) => void;
   isEditMode?: boolean;
   isSelected?: boolean;
-  // Removed unused selectedMidiOutput prop
+  selectedMidiOutput?: string | null;
 }
 
 export default function MidiButton({
   control,
   onChange,
+  onSelect,
   isEditMode = false,
+  isSelected = false,
+  selectedMidiOutput,
 }: MidiButtonProps) {
   const { config } = control;
-  const { sendCC, isConnected, selectedOutput } = useMIDI();
+  const { 
+    subscribeToCC, 
+    selectInputDevice, 
+    sendCC,
+    devices
+  } = useMIDI();
   const theme = useTheme();
   
-  const [isPressed, setIsPressed] = useState(false);
-  
-  // Get button type from config (momentary or toggle)
-  const buttonType = config.buttonType || 'momentary';
-  
-  // Set on and off values from config or use defaults
   const onValue = config.midi?.max !== undefined ? config.midi.max : 127;
   const offValue = config.midi?.min !== undefined ? config.midi.min : 0;
   
-  // Update when config value changes
+  const [isPressed, setIsPressed] = useState(false);
+  const [midiStatus, setMidiStatus] = useState<'ready'|'sent'|'error'>('ready');
+
+  // Add MIDI monitoring setup
   useEffect(() => {
-    if (buttonType === 'toggle') {
-      setIsPressed(config.value === onValue);
+    if (!config.midi || isEditMode) return;
+
+    const outputDevice = devices.find(d => d.id === selectedMidiOutput);
+    if (!outputDevice) return;
+
+    const inputDevice = devices.find(d => 
+      d.type === 'input' && 
+      d.name === outputDevice.name
+    );
+
+    if (!inputDevice) {
+      console.warn(`No matching input device found for ${outputDevice.name}`);
+      return;
     }
-  }, [config.value, onValue, buttonType]);
-  
-  const handleMouseDown = () => {
-    if (isEditMode) return;
-    
-    if (buttonType === 'momentary') {
-      setIsPressed(true);
-      sendMidiValue(onValue);
-    } else {
-      // Toggle mode
-      const newPressed = !isPressed;
-      setIsPressed(newPressed);
-      sendMidiValue(newPressed ? onValue : offValue);
-    }
-  };
-  
-  const handleMouseUp = () => {
-    if (isEditMode || buttonType === 'toggle') return;
-    
-    // Only for momentary buttons, release when mouse up
-    setIsPressed(false);
-    sendMidiValue(offValue);
-  };
-  
-  const handleMouseLeave = () => {
-    if (isEditMode || buttonType === 'toggle' || !isPressed) return;
-    
-    // Only for momentary buttons, release when mouse leaves
-    setIsPressed(false);
-    sendMidiValue(offValue);
-  };
-  
-  const sendMidiValue = (value: number) => {
-    // Always send the MIDI message regardless of selectedMidiOutput
-    // as the hook will handle the case when no device is connected
-    if (config.midi) {
-      console.log(`Sending MIDI CC: ch=${config.midi.channel || 1}, cc=${config.midi.cc || 1}, val=${value}, connected=${isConnected}, output=${selectedOutput?.name || 'none'}`);
-      const success = sendCC(
+
+    if (selectInputDevice(inputDevice.id)) {
+      const unsubscribe = subscribeToCC(
         config.midi.channel || 1,
         config.midi.cc || 1,
-        value
+        (value: number) => {
+          setIsPressed(value === onValue);
+          onChange(value);
+        }
       );
-      
-      if (!success) {
-        console.warn('MIDI send failed - check connection status');
+
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, [config.midi, selectedMidiOutput, devices, onValue, isEditMode]);
+
+  // Handle MIDI sync
+  useEffect(() => {
+    if (!config.midi || isEditMode) return;
+
+    const unsubscribe = midiSync.subscribe(
+      config.midi.channel,
+      config.midi.cc,
+      (value) => {
+        setIsPressed(value === onValue);
+        onChange(value);
+      }
+    );
+
+    return unsubscribe;
+  }, [config.midi?.channel, config.midi?.cc, isEditMode, onValue]);
+
+  const handleMouseDown = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (isEditMode) {
+      onSelect?.(control.id);
+      return;
+    }
+
+    setIsPressed(true);
+    setMidiStatus('sent');
+    saveControlValue(control.id, onValue);
+
+    if (config.midi) {
+      try {
+        const success = sendCC(config.midi.channel || 1, config.midi.cc || 1, onValue);
+        if (!success) {
+          setMidiStatus('error');
+          return;
+        }
+        midiSync.notify(config.midi.channel, config.midi.cc, onValue);
+      } catch (err) {
+        console.error('Button error:', err);
+        setMidiStatus('error');
+        return;
       }
     }
     
-    onChange(value);
+    onChange(onValue);
   };
-  
-  // Get the color from config or use theme default
+
+  const handleMouseUp = async () => {
+    if (isEditMode) return;
+
+    setIsPressed(false);
+    saveControlValue(control.id, offValue);
+
+    if (config.midi) {
+      try {
+        const success = sendCC(config.midi.channel || 1, config.midi.cc || 1, offValue);
+        if (!success) {
+          setMidiStatus('error');
+          return;
+        }
+        midiSync.notify(config.midi.channel, config.midi.cc, offValue);
+      } catch (err) {
+        console.error('Button error:', err);
+        setMidiStatus('error');
+        return;
+      }
+    }
+    
+    onChange(offValue);
+  };
+
+  const handleMouseLeave = () => {
+    if (isPressed) {
+      handleMouseUp();
+    }
+  };
+
   const color = config.color || theme.palette.primary.main;
-  
+
   return (
     <Box
       sx={{
         width: '100%',
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 1,
+        cursor: isEditMode ? 'pointer' : 'pointer',
+        opacity: isEditMode && !isSelected ? 0.7 : 1,
       }}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     >
-      <Box
+      <Box 
         sx={{
           width: '100%',
-          height: '70%',
-          borderRadius: theme.shape.borderRadius,
+          height: '100%',
+          borderRadius: 1,
+          border: `2px solid ${isEditMode ? (isSelected ? theme.palette.primary.main : 'rgba(255,255,255,0.3)') : color}`,
           backgroundColor: isPressed ? color : 'transparent',
-          border: `2px solid ${isEditMode ? 'rgba(255,255,255,0.3)' : color}`,
-          color: isPressed ? theme.palette.getContrastText(color) : color,
           display: 'flex',
+          flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          transition: 'all 0.1s ease-out',
-          cursor: isEditMode ? 'default' : 'pointer',
-          boxShadow: isPressed ? 'none' : theme.shadows[2],
-          transform: isPressed ? 'translateY(2px)' : 'translateY(0)',
-          userSelect: 'none',
+          transition: 'all 0.1s ease-in-out',
+          boxShadow: isPressed ? 'none' : theme.shadows[4],
+          transform: isPressed ? 'scale(0.97)' : 'scale(1)',
           position: 'relative',
+          '&:hover': {
+            opacity: 0.9,
+            borderColor: isEditMode ? theme.palette.primary.main : color,
+          },
         }}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
       >
-        {/* Button text or indication */}
-        {buttonType === 'toggle' && isPressed && (
-          <Typography variant="caption" sx={{ position: 'absolute', top: '5px', right: '5px' }}>
-            ON
-          </Typography>
-        )}
+        <Typography
+          variant="body2"
+          align="center"
+          sx={{
+            width: '100%',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            userSelect: 'none',
+            color: isPressed ? theme.palette.getContrastText(color) : 'text.primary',
+            fontWeight: isPressed ? 'bold' : 'normal',
+            px: 1,
+          }}
+        >
+          {config.label || 'Button'}
+        </Typography>
         
-        {/* Debugging display */}
-        {config.midi && (
+        {isEditMode && config.midi && (
           <Typography 
             variant="caption" 
             sx={{ 
@@ -138,29 +210,17 @@ export default function MidiButton({
               bottom: '5px',
               left: '5px',
               fontSize: '0.6rem',
-              opacity: 0.7,
-              color: isPressed ? theme.palette.getContrastText(color) : 'text.secondary',
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              color: 'white',
+              padding: '2px 4px',
+              borderRadius: 1,
+              zIndex: 2,
             }}
           >
-            CC:{config.midi.cc} CH:{config.midi.channel}
+            {config.midi.cc} | {config.midi.channel}
           </Typography>
         )}
       </Box>
-      
-      <Typography
-        variant="body2"
-        align="center"
-        sx={{
-          mt: 1,
-          width: '100%',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          userSelect: 'none',
-        }}
-      >
-        {config.label || 'Button'}
-      </Typography>
     </Box>
   );
 }
