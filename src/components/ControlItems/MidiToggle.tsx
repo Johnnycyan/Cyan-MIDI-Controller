@@ -263,10 +263,6 @@ export default function MidiToggle({
             duration: '100ms'
           }),
           position: 'relative',
-          '&:hover': {
-            opacity: 0.9,
-            borderColor: isEditMode ? theme.palette.primary.main : color,
-          },
           '&:active': {
             transform: isEditMode ? 'none' : 'scale(0.97)',
           },

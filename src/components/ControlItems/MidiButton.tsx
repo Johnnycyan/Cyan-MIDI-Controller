@@ -179,10 +179,6 @@ export default function MidiButton({
           boxShadow: isPressed ? 'none' : theme.shadows[4],
           transform: isPressed ? 'scale(0.97)' : 'scale(1)',
           position: 'relative',
-          '&:hover': {
-            opacity: 0.9,
-            borderColor: isEditMode ? theme.palette.primary.main : color,
-          },
         }}
       >
         <Typography
