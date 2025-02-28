@@ -19,7 +19,13 @@ export default function MidiToggle({
   selectedMidiOutput
 }: MidiToggleProps) {
   const { config } = control;
-  const { sendCC, isConnected, selectedOutput, devices, selectOutputDevice } = useMIDI();
+  const { 
+    subscribeToCC, 
+    selectInputDevice, 
+    selectOutputDevice,
+    devices, 
+    isConnected 
+  } = useMIDI();
   const theme = useTheme();
   
   // Set on and off values from config or use defaults
@@ -45,21 +51,58 @@ export default function MidiToggle({
   
   // Help debug MIDI device connection issues
   useEffect(() => {
-    if (config.midi && selectedMidiOutput && !selectedOutput) {
+    if (config.midi && selectedMidiOutput && !selectedMidiOutput) {
       console.log(`MidiToggle: Device ID ${selectedMidiOutput} doesn't match any output. Available devices:`, 
         devices.map(d => `${d.name} (${d.type}): ${d.id}`));
     }
-  }, [config.midi, selectedMidiOutput, selectedOutput, devices]);
+  }, [config.midi, selectedMidiOutput, devices]);
   
   // Force synchronize the real selected device with the one passed as prop
   useEffect(() => {
     // Only run once when the component mounts or if selectedMidiOutput changes
-    if (selectedMidiOutput && isConnected === false) {
+    if (selectedMidiOutput && !isConnected) {
       console.log(`MidiToggle: Forcing sync with device ID: ${selectedMidiOutput}`);
       selectOutputDevice(selectedMidiOutput);
     }
-  }, [selectedMidiOutput]); // Only re-run if selectedMidiOutput changes
+  }, [selectedMidiOutput, isConnected, selectOutputDevice]);
   
+  // Subscribe to CC changes when the component mounts
+  useEffect(() => {
+    if (!config.midi || isEditMode) return;
+
+    // Find corresponding input device
+    const outputDevice = devices.find(d => d.id === selectedMidiOutput);
+    if (!outputDevice) return;
+
+    // Find input device with same name
+    const inputDevice = devices.find(d => 
+      d.type === 'input' && 
+      d.name === outputDevice.name
+    );
+
+    if (!inputDevice) {
+      console.warn(`No matching input device found for ${outputDevice.name}`);
+      return;
+    }
+
+    // Select the input device and subscribe to CC changes
+    if (selectInputDevice(inputDevice.id)) {
+      const unsubscribe = subscribeToCC(
+        config.midi.channel || 1,
+        config.midi.cc || 1,
+        (value: number) => {
+          console.log(`Received CC value ${value} for channel ${config.midi?.channel} cc ${config.midi?.cc}`);
+          setChecked(value === onValue);
+          onChange(value);
+        }
+      );
+
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, [config.midi, selectedMidiOutput, devices, onValue, isEditMode, selectInputDevice, subscribeToCC, onChange]);
+
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     

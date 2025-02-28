@@ -75,9 +75,37 @@ export default function useMIDI() {
     }
   }, [devices]);
 
+  // Select input device
+  const selectInputDevice = useCallback((deviceId: string) => {
+    // Debug logging
+    console.log('Attempting to select input device:', deviceId);
+    
+    // Find the input device with matching ID
+    const device = devices.find(d => d.id === deviceId && d.type === 'input');
+
+    if (!device) {
+      console.error(`Could not find input device with ID: ${deviceId}`);
+      return false;
+    }
+
+    const success = midiHandler.selectInput(device.id);
+    if (!success) {
+      console.error(`Failed to select input device ${device.name}`);
+      return false;
+    }
+
+    console.log('Successfully selected input device:', device.name);
+    return true;
+  }, [devices]);
+
   // Send CC message
   const sendCC = useCallback((channel: number, cc: number, value: number): boolean => {
     return midiHandler.sendCC(channel, cc, value);
+  }, []);
+
+  // Subscribe to CC changes
+  const subscribeToCC = useCallback((channel: number, cc: number, callback: (value: number) => void) => {
+    return midiHandler.subscribeToCC(channel, cc, callback);
   }, []);
 
   // Request MIDI access (for refreshing connections)
@@ -104,7 +132,9 @@ export default function useMIDI() {
     selectedOutput,
     isConnected,
     selectOutputDevice,
+    selectInputDevice,
     sendCC,
+    subscribeToCC,
     requestMIDIAccess
   };
 }

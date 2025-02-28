@@ -2,8 +2,24 @@ export class MIDIHandler {
   private midiAccess: MIDIAccess | null = null;
   private selectedInput: MIDIInput | null = null;
   private selectedOutput: MIDIOutput | null = null;
-  private messageCallback: ((event: MIDIMessageEvent) => void) | null = null;
   private onStateChange: ((state: MIDIConnectionState) => void) | null = null;
+  private ccListeners: Map<string, (value: number) => void> = new Map();
+
+  // Create a key for CC listeners
+  private static getCCKey(channel: number, cc: number): string {
+    return `${channel}-${cc}`;
+  }
+
+  // Subscribe to CC changes
+  subscribeToCC(channel: number, cc: number, callback: (value: number) => void): () => void {
+    const key = MIDIHandler.getCCKey(channel, cc);
+    this.ccListeners.set(key, callback);
+
+    // Return unsubscribe function
+    return () => {
+      this.ccListeners.delete(key);
+    };
+  }
 
   // Initialize MIDI system
   async initialize(): Promise<boolean> {
@@ -74,13 +90,31 @@ export class MIDIHandler {
         this.selectedInput.onmidimessage = null;
       }
       this.selectedInput = input;
-      if (this.messageCallback) {
-        this.selectedInput.onmidimessage = this.messageCallback;
-      }
+      this.selectedInput.onmidimessage = this.handleMIDIMessage;
       return true;
     }
     return false;
   }
+
+  // Handle incoming MIDI message
+  private handleMIDIMessage = (event: MIDIMessageEvent) => {
+    // Ensure data exists and is not null
+    if (!event.data) return;
+    
+    const data = Array.from(new Uint8Array(event.data));
+    const [status, cc, value] = data;
+    
+    // Check if it's a CC message (0xB0-0xBF)
+    if ((status & 0xF0) === 0xB0) {
+      const channel = (status & 0x0F) + 1; // Convert to 1-based channel number
+      const key = MIDIHandler.getCCKey(channel, cc);
+      const listener = this.ccListeners.get(key);
+      
+      if (listener) {
+        listener(value);
+      }
+    }
+  };
 
   // Select MIDI output device
   selectOutput(deviceId: string): boolean {
@@ -92,14 +126,6 @@ export class MIDIHandler {
       return true;
     }
     return false;
-  }
-
-  // Set MIDI message callback
-  setMessageCallback(callback: (event: MIDIMessageEvent) => void) {
-    this.messageCallback = callback;
-    if (this.selectedInput) {
-      this.selectedInput.onmidimessage = callback;
-    }
   }
 
   // Set state change callback
