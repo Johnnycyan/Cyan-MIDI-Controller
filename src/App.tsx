@@ -40,6 +40,11 @@ function App() {
           body: {
             height: '100%',
             overflow: 'hidden',
+            // Add this to disable text selection globally
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none',
           },
           '#root': {
             height: '100%',

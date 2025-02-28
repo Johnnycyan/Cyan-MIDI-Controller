@@ -3,6 +3,7 @@ import { Box, Typography, useTheme } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
 import { saveControlValue, loadControlValue } from '../../utils/controlValueStorage';
+import { midiSync } from '../../utils/midiSync';
 
 interface MidiSliderProps {
   control: ControlItem;
@@ -92,9 +93,26 @@ export default function MidiSlider({
     
     if (config.midi && selectedMidiOutput) {
       sendCC(config.midi.channel, config.midi.cc, value);
+      midiSync.notify(config.midi.channel, config.midi.cc, value);
     }
     onChange(value);
   };
+
+  // Subscribe to sync events
+  useEffect(() => {
+    if (!config.midi || isEditMode) return;
+
+    const unsubscribe = midiSync.subscribe(
+      config.midi.channel,
+      config.midi.cc,
+      (value) => {
+        setLocalValue(value);
+        onChange(value);
+      }
+    );
+
+    return unsubscribe;
+  }, [config.midi?.channel, config.midi?.cc, isEditMode]);
 
   // Subscribe to MIDI messages when component mounts
   useEffect(() => {
@@ -146,23 +164,31 @@ export default function MidiSlider({
   }, [config.midi, selectedMidiOutput, isEditMode, devices]);
 
   return (
-    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: 1 }}>
-      <Typography
-        variant="body2"
-        sx={{
-          width: '100%',
-          textAlign: 'center',
-          mb: 1,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          userSelect: 'none',
-          color: fillPercentage > 0 ? theme.palette.getContrastText(color) : 'text.primary',
-          fontWeight: fillPercentage > 0 ? 'bold' : 'normal',
-        }}
-      >
-        {config.label || 'Slider'}
-      </Typography>
+    <Box sx={{
+      width: '100%', 
+      height: '100%', 
+      display: 'flex',
+      flexDirection: isVertical ? 'column' : 'column', // Always column
+      padding: 1,
+      userSelect: 'none',
+    }}>
+      {isVertical && (
+        <Typography
+          variant="body2"
+          sx={{
+            width: '100%',
+            textAlign: 'center',
+            mb: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            color: fillPercentage > 0 ? theme.palette.getContrastText(color) : 'text.primary',
+            fontWeight: fillPercentage > 0 ? 'bold' : 'normal',
+          }}
+        >
+          {config.label || 'Slider'}
+        </Typography>
+      )}
 
       <Box
         ref={sliderRef}
@@ -173,11 +199,10 @@ export default function MidiSlider({
           borderRadius: 1,
           overflow: 'hidden',
           backgroundColor: 'transparent',
-          cursor: 'pointer',
+          cursor: isEditMode ? 'default' : 'pointer',
         }}
         onMouseDown={(e) => {
           if (isEditMode) return;
-          
           handleMouseInteraction(e.clientX, e.clientY);
           
           const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -212,6 +237,27 @@ export default function MidiSlider({
           }}
         />
         
+        {/* For horizontal sliders, show label in center */}
+        {!isVertical && (
+          <Typography
+            variant="body2"
+            sx={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: fillPercentage > 50 ? theme.palette.getContrastText(color) : 'text.primary',
+              fontWeight: fillPercentage > 50 ? 'bold' : 'normal',
+              zIndex: 1,
+              textAlign: 'center',
+              width: '100%',
+              padding: '0 8px',
+            }}
+          >
+            {config.label || 'Slider'}
+          </Typography>
+        )}
+
         <Typography
           variant="caption"
           sx={{
@@ -246,7 +292,6 @@ export default function MidiSlider({
             {config.midi.cc} | {config.midi.channel}
           </Typography>
         )}
-
       </Box>
     </Box>
   );

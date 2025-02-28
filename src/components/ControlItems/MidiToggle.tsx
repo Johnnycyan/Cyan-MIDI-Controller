@@ -4,6 +4,7 @@ import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
 import { toggleHandler } from '../../midi/toggleHandler';
 import { saveControlValue, loadControlValue } from '../../utils/controlValueStorage';
+import { midiSync } from '../../utils/midiSync';
 
 interface MidiToggleProps {
   control: ControlItem;
@@ -115,6 +116,22 @@ export default function MidiToggle({
     }
   }, [config.midi, selectedMidiOutput, devices, onValue, isEditMode, selectInputDevice, subscribeToCC, onChange]);
 
+  // Subscribe to sync events
+  useEffect(() => {
+    if (!config.midi || isEditMode) return;
+
+    const unsubscribe = midiSync.subscribe(
+      config.midi.channel,
+      config.midi.cc,
+      (value) => {
+        setChecked(value === onValue);
+        onChange(value);
+      }
+    );
+
+    return unsubscribe;
+  }, [config.midi?.channel, config.midi?.cc, isEditMode, onValue]);
+
   // Load saved value on mount
   useEffect(() => {
     const savedValue = loadControlValue(control.id);
@@ -167,6 +184,9 @@ export default function MidiToggle({
           console.error('Failed to send MIDI toggle state');
           return;
         }
+
+        // Add sync notification after successful MIDI send
+        midiSync.notify(config.midi.channel, config.midi.cc, newValue);
       } catch (err) {
         console.error('Toggle error:', err);
         setMidiStatus('error');
