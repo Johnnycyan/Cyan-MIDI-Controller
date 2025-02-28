@@ -11,8 +11,13 @@ interface GridItemProps {
   cellWidth: number;
   cellHeight: number;
   isSelected: boolean;
+  isDragging?: boolean;
   isEditMode: boolean;
   selectedMidiOutput?: string | null;
+  preview?: {
+    position: { x: number; y: number };
+    size: { w: number; h: number };
+  } | null;
   onSelect: () => void;
   onDragStart: (e: React.MouseEvent) => void;
   onResizeStart: (e: React.MouseEvent, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => void;
@@ -23,8 +28,10 @@ export default function GridItem({
   cellWidth,
   cellHeight,
   isSelected,
+  isDragging = false,
   isEditMode,
   selectedMidiOutput,
+  preview = null,
   onSelect,
   onDragStart,
   onResizeStart,
@@ -132,14 +139,16 @@ export default function GridItem({
         border: isSelected && isEditMode ? '2px dashed primary.main' : 'none',
         boxSizing: 'border-box',
         cursor: isEditMode ? 'move' : 'default',
-        // Add a slight transition to make dragging and resizing feel smoother
-        transition: isEditMode ? 'none' : 'left 0.1s, top 0.1s, width 0.1s, height 0.1s',
+        transition: isDragging ? 'none' : 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isDragging ? 0.8 : 1,
+        transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+        pointerEvents: isDragging && !isEditMode ? 'none' : 'auto',
       }}
       onMouseDown={isEditMode ? onDragStart : undefined}
       onClick={isEditMode ? onSelect : undefined}
     >
       {renderControl()}
-      {renderResizeHandles()}
+      {isEditMode && renderResizeHandles()}
     </Box>
   );
 }

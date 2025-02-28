@@ -86,14 +86,17 @@ export default function MidiButton({
     return unsubscribe;
   }, [config.midi?.channel, config.midi?.cc, isEditMode, onValue]);
 
+  // Modify these event handlers to allow drag in edit mode
   const handleMouseDown = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
+    // In edit mode, we delegate the event handling to the parent
     if (isEditMode) {
       onSelect?.(control.id);
+      // Important: Don't stop propagation in edit mode
       return;
     }
-
+    
+    // Normal button behavior in non-edit mode
+    e.stopPropagation();
     setIsPressed(true);
     setMidiStatus('sent');
     saveControlValue(control.id, onValue);
@@ -116,9 +119,12 @@ export default function MidiButton({
     onChange(onValue);
   };
 
-  const handleMouseUp = async () => {
+  const handleMouseUp = async (e: React.MouseEvent) => {
+    // Skip in edit mode
     if (isEditMode) return;
-
+    
+    // Normal button behavior in non-edit mode
+    e.stopPropagation();
     setIsPressed(false);
     saveControlValue(control.id, offValue);
 
@@ -140,9 +146,12 @@ export default function MidiButton({
     onChange(offValue);
   };
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    // Skip in edit mode
+    if (isEditMode) return;
+    
     if (isPressed) {
-      handleMouseUp();
+      handleMouseUp(e);
     }
   };
 
@@ -163,6 +172,8 @@ export default function MidiButton({
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      // Use pointer-events none in edit mode so parent can receive events
+      style={isEditMode ? { pointerEvents: isSelected ? 'auto' : 'none' } : undefined}
     >
       <Box 
         sx={{

@@ -4,6 +4,7 @@ import { ControlItem } from '../types/index';
 import { useState, useRef, useEffect } from 'react';
 import GridItem from './GridItem';
 import { checkOverlap } from '../utils/gridHelpers';
+import { TransitionGroup } from 'react-transition-group';
 
 interface MidiControllerGridProps {
   controls: ControlItem[];
@@ -43,6 +44,12 @@ export default function MidiControllerGrid({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   // Add the missing state variable
   const [resizeHandleOffset, setResizeHandleOffset] = useState({ x: 0, y: 0 });
+  // Add new state for preview positioning
+  const [dragPreview, setDragPreview] = useState<{
+    controlId: string;
+    position: { x: number; y: number };
+    size: { w: number; h: number };
+  } | null>(null);
 
   // Calculate cell size based on grid dimensions
   const cellWidth = gridSize.width / columns;
@@ -77,7 +84,7 @@ export default function MidiControllerGrid({
     };
   }, [columns, rows]);
 
-  // Handle mouse move during drag operations with improved positioning
+  // Handle mouse move during drag operations with improved positioning and previews
   useEffect(() => {
     if (!dragState || !isEditMode) return;
 
@@ -97,150 +104,162 @@ export default function MidiControllerGrid({
       if (!control) return;
 
       if (dragState.type === 'move') {
+        // For the actual control's precise position (follows mouse exactly)
+        const preciseX = mouseX - dragOffset.x;
+        const preciseY = mouseY - dragOffset.y;
+
+        // For the snapping preview
         // Calculate mouse position in grid coordinates, considering drag offset
         const mouseGridX = mouseX / cellWidth;
         const mouseGridY = mouseY / cellHeight;
-        
+
         // Calculate offset in grid units
         const offsetGridX = dragOffset.x / cellWidth;
         const offsetGridY = dragOffset.y / cellHeight;
-        
+
         // Calculate target position, applying a consistent rounding rule
-        // This ensures we move to a grid cell only when we're more than halfway across it
         const targetGridX = Math.floor(mouseGridX - offsetGridX + 0.5);
         const targetGridY = Math.floor(mouseGridY - offsetGridY + 0.5);
-        
-        // Apply constraints to keep the control within grid boundaries
-        const newPosX = Math.max(0, Math.min(columns - control.size.w, targetGridX));
-        const newPosY = Math.max(0, Math.min(rows - control.size.h, targetGridY));
 
-        // Only update if position changed
-        if (newPosX !== control.position.x || newPosY !== control.position.y) {
-          // Check for collisions
-          const wouldOverlap = checkOverlap(
-            { x: newPosX, y: newPosY },
-            control.size,
-            controls,
-            control.id
-          );
+        // Apply constraints for the preview
+        const snapX = Math.max(0, Math.min(columns - control.size.w, targetGridX));
+        const snapY = Math.max(0, Math.min(rows - control.size.h, targetGridY));
 
-          if (!wouldOverlap) {
-            onUpdateControl(control.id, {
-              position: { x: newPosX, y: newPosY }
-            });
-          }
-        }
-      } else if (dragState.type === 'resize') {
-        // For resize, use a more conservative snapping approach
-        // Only snap to next grid cell when mouse is at least 70% across the cell
-        const snapThreshold = 0.7;
-        
-        // Calculate fractional grid coordinates
-        const gridXFractional = mouseX / cellWidth;
-        const gridYFractional = mouseY / cellHeight;
-        
-        // Calculate grid integers with threshold-based rounding
-        let gridX = Math.floor(gridXFractional);
-        let gridY = Math.floor(gridYFractional);
-        
-        // Only move to next grid if we're past threshold
-        if (gridXFractional - gridX > snapThreshold) gridX += 1;
-        if (gridYFractional - gridY > snapThreshold) gridY += 1;
-        
-        // Apply bounds
-        gridX = Math.max(0, Math.min(columns, gridX));
-        gridY = Math.max(0, Math.min(rows, gridY));
-        
-        // Handle resize based on which handle was grabbed
-        const { handle, startPos, startSize } = dragState;
-        let newX = control.position.x;
-        let newY = control.position.y;
-        let newW = control.size.w;
-        let newH = control.size.h;
-
-        // Calculate new positions based on handle type
-        switch (handle) {
-          case 'n':
-            // North edge - adjust y and height
-            // Only allow resizing if we won't make control too small
-            if (startPos.y + startSize.h - gridY >= 1) {
-              newY = gridY;
-              newH = startPos.y + startSize.h - gridY;
-            }
-            break;
-          case 's':
-            // South edge - adjust height only
-            newH = Math.max(1, gridY - startPos.y);
-            break;
-          case 'e':
-            // East edge - adjust width only
-            newW = Math.max(1, gridX - startPos.x);
-            break;
-          case 'w':
-            // West edge - adjust x and width
-            // Only allow resizing if we won't make control too small
-            if (startPos.x + startSize.w - gridX >= 1) {
-              newX = gridX;
-              newW = startPos.x + startSize.w - gridX;
-            }
-            break;
-          case 'ne':
-            // Northeast corner - adjust y, height, and width
-            if (startPos.y + startSize.h - gridY >= 1) {
-              newY = gridY;
-              newH = startPos.y + startSize.h - gridY;
-            }
-            newW = Math.max(1, gridX - startPos.x);
-            break;
-          case 'nw':
-            // Northwest corner - adjust x, y, width, and height
-            if (startPos.y + startSize.h - gridY >= 1) {
-              newY = gridY;
-              newH = startPos.y + startSize.h - gridY;
-            }
-            if (startPos.x + startSize.w - gridX >= 1) {
-              newX = gridX;
-              newW = startPos.x + startSize.w - gridX;
-            }
-            break;
-          case 'se':
-            // Southeast corner - adjust width and height
-            newW = Math.max(1, gridX - startPos.x);
-            newH = Math.max(1, gridY - startPos.y);
-            break;
-          case 'sw':
-            // Southwest corner - adjust x, width, and height
-            if (startPos.x + startSize.w - gridX >= 1) {
-              newX = gridX;
-              newW = startPos.x + startSize.w - gridX;
-            }
-            newH = Math.max(1, gridY - startPos.y);
-            break;
-        }
-
-        // Enforce minimum size and grid boundaries
-        newW = Math.max(1, Math.min(columns - newX, newW));
-        newH = Math.max(1, Math.min(rows - newY, newH));
-
-        // Check for overlap
+        // Check for collisions for the preview
         const wouldOverlap = checkOverlap(
-          { x: newX, y: newY },
-          { w: newW, h: newH },
+          { x: snapX, y: snapY },
+          control.size,
           controls,
           control.id
         );
 
+        // Update the preview position (for snapping guidelines)
+        setDragPreview({
+          controlId: control.id,
+          position: {
+            x: wouldOverlap ? control.position.x : snapX,
+            y: wouldOverlap ? control.position.y : snapY
+          },
+          size: { ...control.size }
+        });
+
+        // Update the actual control with precise position (follows mouse exactly)
+        onUpdateControl(control.id, {
+          position: {
+            x: preciseX / cellWidth,
+            y: preciseY / cellHeight
+          }
+        });
+      } else if (dragState.type === 'resize') {
+        // Get precise mouse position in grid coordinates
+        const preciseGridX = mouseX / cellWidth;
+        const preciseGridY = mouseY / cellHeight;
+
+        // Get the initial control position and size
+        const { startPos, startSize, handle } = dragState;
+
+        // Calculate new precise dimensions based on handle
+        let newPreciseX = control.position.x;
+        let newPreciseY = control.position.y;
+        let newPreciseW = control.size.w;
+        let newPreciseH = control.size.h;
+
+        // Apply fluid resize calculations based on handle type
+        switch (handle) {
+          case 'n':
+            // Adjust y and height for north handle
+            newPreciseY = preciseGridY;
+            newPreciseH = Math.max(1, startPos.y + startSize.h - preciseGridY);
+            break;
+          case 's':
+            // Adjust height for south handle
+            newPreciseH = Math.max(1, preciseGridY - startPos.y);
+            break;
+          case 'e':
+            // Adjust width for east handle
+            newPreciseW = Math.max(1, preciseGridX - startPos.x);
+            break;
+          case 'w':
+            // Adjust x and width for west handle
+            newPreciseX = preciseGridX;
+            newPreciseW = Math.max(1, startPos.x + startSize.w - preciseGridX);
+            break;
+          case 'ne':
+            // Adjust y, height, and width for northeast handle
+            newPreciseY = preciseGridY;
+            newPreciseH = Math.max(1, startPos.y + startSize.h - preciseGridY);
+            newPreciseW = Math.max(1, preciseGridX - startPos.x);
+            break;
+          case 'nw':
+            // Adjust x, y, width, and height for northwest handle
+            newPreciseX = preciseGridX;
+            newPreciseY = preciseGridY;
+            newPreciseW = Math.max(1, startPos.x + startSize.w - preciseGridX);
+            newPreciseH = Math.max(1, startPos.y + startSize.h - preciseGridY);
+            break;
+          case 'se':
+            // Adjust width and height for southeast handle
+            newPreciseW = Math.max(1, preciseGridX - startPos.x);
+            newPreciseH = Math.max(1, preciseGridY - startPos.y);
+            break;
+          case 'sw':
+            // Adjust x, width, and height for southwest handle
+            newPreciseX = preciseGridX;
+            newPreciseW = Math.max(1, startPos.x + startSize.w - preciseGridX);
+            newPreciseH = Math.max(1, preciseGridY - startPos.y);
+            break;
+        }
+
+        // Apply bounds to fluid position and size
+        newPreciseX = Math.max(0, newPreciseX);
+        newPreciseY = Math.max(0, newPreciseY);
+        newPreciseW = Math.min(columns - newPreciseX, newPreciseW);
+        newPreciseH = Math.min(rows - newPreciseY, newPreciseH);
+
+        // Update control with fluid position (follows mouse exactly)
+        onUpdateControl(control.id, {
+          position: { x: newPreciseX, y: newPreciseY },
+          size: { w: newPreciseW, h: newPreciseH }
+        });
+
+        // Now calculate the snapped preview position and size
+        const snapX = Math.round(newPreciseX);
+        const snapY = Math.round(newPreciseY);
+        const snapW = Math.round(newPreciseW);
+        const snapH = Math.round(newPreciseH);
+
+        // Check for collisions with the snapped preview
+        const wouldOverlap = checkOverlap(
+          { x: snapX, y: snapY },
+          { w: snapW, h: snapH },
+          controls,
+          control.id
+        );
+
+        // Update the preview to show where it will snap
         if (!wouldOverlap) {
-          onUpdateControl(control.id, {
-            position: { x: newX, y: newY },
-            size: { w: newW, h: newH }
+          setDragPreview({
+            controlId: control.id,
+            position: { x: snapX, y: snapY },
+            size: { w: snapW, h: snapH }
           });
         }
       }
     };
 
     const handleMouseUp = () => {
+      const control = controls.find(c => c.id === dragState?.controlId);
+      if (control && dragPreview) {
+        // On mouse up, snap to the preview position/size
+        onUpdateControl(control.id, {
+          position: { ...dragPreview.position },
+          size: { ...dragPreview.size }
+        });
+      }
+
+      // Clear states
       setDragState(null);
+      setDragPreview(null);
       setDragOffset({ x: 0, y: 0 });
       setResizeHandleOffset({ x: 0, y: 0 });
     };
@@ -252,7 +271,7 @@ export default function MidiControllerGrid({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragState, isEditMode, controls, columns, rows, cellWidth, cellHeight, onUpdateControl, dragOffset]);
+  }, [dragState, isEditMode, controls, columns, rows, cellWidth, cellHeight, onUpdateControl, dragOffset, dragPreview]);
 
   // Start drag operation for moving a control with improved offset calculation
   const handleDragStart = (e: React.MouseEvent, controlId: string) => {
@@ -266,7 +285,7 @@ export default function MidiControllerGrid({
 
     // Calculate the grid rect
     const gridRect = gridRef.current.getBoundingClientRect();
-    
+
     // Calculate mouse position relative to grid - moved before usage
     const mouseX = e.clientX - gridRect.left;
     const mouseY = e.clientY - gridRect.top;
@@ -280,7 +299,7 @@ export default function MidiControllerGrid({
     const offsetY = mouseY - controlTop;
 
     setDragOffset({ x: offsetX, y: offsetY });
-    
+
     setDragState({
       controlId,
       type: 'move',
@@ -365,13 +384,35 @@ export default function MidiControllerGrid({
           cellWidth={cellWidth}
           cellHeight={cellHeight}
           isSelected={control.id === selectedControlId}
+          isDragging={dragState?.controlId === control.id}
           isEditMode={isEditMode}
           selectedMidiOutput={selectedMidiOutput}
+          preview={dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
           onSelect={() => onSelectControl(control.id)}
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}
         />
       ))}
+
+      {/* Show grid snap preview */}
+      {dragPreview && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: dragPreview.position.x * cellWidth,
+            top: dragPreview.position.y * cellHeight,
+            width: dragPreview.size.w * cellWidth,
+            height: dragPreview.size.h * cellHeight,
+            border: '2px dashed',
+            borderColor: 'primary.main',
+            borderRadius: 1,
+            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+            pointerEvents: 'none',
+            transition: 'none',
+            zIndex: 1,
+          }}
+        />
+      )}
     </Box>
   );
 }
