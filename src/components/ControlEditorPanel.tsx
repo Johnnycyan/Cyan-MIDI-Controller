@@ -65,6 +65,7 @@ export default function ControlEditorPanel({
   onUpdateControl,
   onDeleteControl,
   onMoveControl,
+  onResizeControl,
   gridColumns,
   gridRows
 }: ControlEditorPanelProps) {
@@ -278,6 +279,29 @@ export default function ControlEditorPanel({
   const canMoveLeft = selectedControl.position.x > 0;
   const canMoveRight = selectedControl.position.x + selectedControl.size.w < gridColumns;
 
+  // Add handlers for position and size changes
+  const handlePositionChange = (axis: 'x' | 'y', value: number) => {
+    if (!selectedControl) return;
+    
+    const newPosition = {
+      ...selectedControl.position,
+      [axis]: value
+    };
+    
+    onUpdateControl(selectedControl.id, { position: newPosition });
+  };
+
+  const handleSizeChange = (dimension: 'w' | 'h', value: number) => {
+    if (!selectedControl) return;
+    
+    const newSize = {
+      ...selectedControl.size,
+      [dimension]: value
+    };
+    
+    onUpdateControl(selectedControl.id, { size: newSize });
+  };
+
   return (
     <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h6" gutterBottom>
@@ -325,48 +349,50 @@ export default function ControlEditorPanel({
                 <TextField
                   label="X"
                   type="number"
-                  value={selectedControl.position.x}
-                  InputProps={{
-                    readOnly: true,
-                  }}
+                  value={selectedControl?.position.x ?? 0}
+                  onChange={(e) => handlePositionChange('x', parseInt(e.target.value, 10))}
                   fullWidth
                   size="small"
+                  inputProps={{ min: 0, max: gridColumns - (selectedControl?.size.w ?? 1) }}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
                   label="Y"
                   type="number"
-                  value={selectedControl.position.y}
-                  InputProps={{
-                    readOnly: true,
-                  }}
+                  value={selectedControl?.position.y ?? 0}
+                  onChange={(e) => handlePositionChange('y', parseInt(e.target.value, 10))}
                   fullWidth
                   size="small"
+                  inputProps={{ min: 0, max: gridRows - (selectedControl?.size.h ?? 1) }}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
                   label="Width"
                   type="number"
-                  value={selectedControl.size.w}
-                  InputProps={{
-                    readOnly: true,
-                  }}
+                  value={selectedControl?.size.w ?? 1}
+                  onChange={(e) => handleSizeChange('w', parseInt(e.target.value, 10))}
                   fullWidth
                   size="small"
+                  inputProps={{ 
+                    min: 1, 
+                    max: gridColumns - (selectedControl?.position.x ?? 0) 
+                  }}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
                   label="Height"
                   type="number"
-                  value={selectedControl.size.h}
-                  InputProps={{
-                    readOnly: true,
-                  }}
+                  value={selectedControl?.size.h ?? 1}
+                  onChange={(e) => handleSizeChange('h', parseInt(e.target.value, 10))}
                   fullWidth
                   size="small"
+                  inputProps={{ 
+                    min: 1, 
+                    max: gridRows - (selectedControl?.position.y ?? 0) 
+                  }}
                 />
               </Grid>
             </Grid>

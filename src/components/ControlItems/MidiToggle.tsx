@@ -7,6 +7,7 @@ import { toggleHandler } from '../../midi/toggleHandler';
 interface MidiToggleProps {
   control: ControlItem;
   onChange: (value: number) => void;
+  onSelect?: (id: string) => void;  // Add this prop
   isEditMode?: boolean;
   isSelected?: boolean;
   selectedMidiOutput?: string | null;
@@ -15,8 +16,10 @@ interface MidiToggleProps {
 export default function MidiToggle({
   control,
   onChange,
+  onSelect,  // Add this prop
   isEditMode = false,
-  selectedMidiOutput
+  isSelected = false,
+  selectedMidiOutput,
 }: MidiToggleProps) {
   const { config } = control;
   const { 
@@ -103,9 +106,19 @@ export default function MidiToggle({
     }
   }, [config.midi, selectedMidiOutput, devices, onValue, isEditMode, selectInputDevice, subscribeToCC, onChange]);
 
-  const handleToggle = async (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
+    if (isEditMode) {
+      // In edit mode, select the control
+      onSelect?.(control.id);
+      return;
+    }
+    
+    handleToggle();
+  };
+
+  const handleToggle = async () => {
     if (isEditMode) return;
     
     const newChecked = !checked;
@@ -203,29 +216,31 @@ export default function MidiToggle({
         width: '100%',
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 1,
-        cursor: isEditMode ? 'default' : 'pointer',
+        cursor: isEditMode ? 'pointer' : 'pointer',
+        opacity: isEditMode && !isSelected ? 0.7 : 1,
       }}
-      onClick={handleToggle}
+      onClick={handleClick}
     >
       <Box 
         sx={{
           width: '100%',
-          height: '70%',
+          height: '100%',
           borderRadius: 1,
-          border: `2px solid ${isEditMode ? 'rgba(255,255,255,0.3)' : color}`,
+          border: `2px solid ${isEditMode ? (isSelected ? theme.palette.primary.main : 'rgba(255,255,255,0.3)') : color}`,
           backgroundColor: checked ? color : 'transparent',
           display: 'flex',
+          flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          transition: 'background-color 0.2s ease-in-out',
+          transition: 'all 0.2s ease-in-out',
           boxShadow: checked ? theme.shadows[4] : 'none',
           position: 'relative',
           '&:hover': {
-            opacity: isEditMode ? 1 : 0.9,
+            opacity: 0.9,
+            borderColor: isEditMode ? theme.palette.primary.main : color,
           },
         }}
       >
@@ -243,26 +258,25 @@ export default function MidiToggle({
           </Typography>
         )}
         
-        {/* MIDI Info with null check */}
+        <Typography
+          variant="body2"
+          align="center"
+          sx={{
+            width: '100%',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            userSelect: 'none',
+            color: checked ? theme.palette.getContrastText(color) : 'text.primary',
+            fontWeight: checked ? 'bold' : 'normal',
+            px: 1,
+          }}
+        >
+          {config.label || 'Toggle'}
+        </Typography>
+        
         {renderMidiInfo()}
       </Box>
-      
-      <Typography
-        variant="body2"
-        align="center"
-        sx={{
-          mt: 1,
-          width: '100%',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          userSelect: 'none',
-          color: checked ? color : 'text.primary',
-          fontWeight: checked ? 'bold' : 'normal',
-        }}
-      >
-        {config.label || 'Toggle'}
-      </Typography>
     </Box>
   );
 }

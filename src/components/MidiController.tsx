@@ -387,21 +387,6 @@ export default function MidiController() {
     setControls(updatedControls);
   };
   
-  // Update a control's config values only
-  const updateControlConfig = (id: string, updatedConfig: Partial<ControlItem['config']>) => {
-    const updatedControls = controls.map(control => {
-      if (control.id === id) {
-        return {
-          ...control,
-          config: { ...control.config, ...updatedConfig }
-        };
-      }
-      return control;
-    });
-    
-    setControls(updatedControls);
-  };
-  
   // Delete a control
   const deleteControl = (id: string) => {
     const updatedControls = controls.filter(control => control.id !== id);
@@ -655,7 +640,9 @@ export default function MidiController() {
             isEditMode={isEditMode}
             selectedControlId={selectedControlId}
             onSelectControl={setSelectedControlId}
-            onUpdateControl={updateControlConfig}
+            onUpdateControl={updateControl}  // Changed to use updateControl instead of updateControlConfig
+            onMoveControl={moveControl}      // Add this
+            onResizeControl={resizeControl}  // Add this
             selectedMidiOutput={midiDeviceId}
           />
         </Box>

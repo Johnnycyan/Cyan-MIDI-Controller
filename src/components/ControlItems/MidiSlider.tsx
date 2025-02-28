@@ -1,46 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Box, Slider, Typography, styled } from '@mui/material';
+import { useState, useEffect, useRef } from 'react';
+import { Box, Typography, useTheme } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
-
-const StyledSlider = styled(Slider)(({ theme, color }) => ({
-  color: color || theme.palette.primary.main,
-  height: 8,
-  '& .MuiSlider-track': {
-    border: 'none',
-  },
-  '& .MuiSlider-thumb': {
-    height: 24,
-    width: 24,
-    backgroundColor: '#fff',
-    border: '2px solid currentColor',
-    '&:focus, &:hover, &.Mui-active, &.Mui-focusVisible': {
-      boxShadow: 'inherit',
-    },
-    '&::before': {
-      display: 'none',
-    },
-  },
-  '& .MuiSlider-valueLabel': {
-    lineHeight: 1.2,
-    fontSize: 12,
-    background: 'unset',
-    padding: 0,
-    width: 32,
-    height: 32,
-    borderRadius: '50% 50% 50% 0',
-    backgroundColor: color || theme.palette.primary.main,
-    transformOrigin: 'bottom left',
-    transform: 'translate(50%, -100%) rotate(-45deg) scale(0)',
-    '&::before': { display: 'none' },
-    '&.MuiSlider-valueLabelOpen': {
-      transform: 'translate(50%, -100%) rotate(-45deg) scale(1)',
-    },
-    '& > *': {
-      transform: 'rotate(45deg)',
-    },
-  },
-}));
 
 interface MidiSliderProps {
   control: ControlItem;
@@ -58,92 +19,131 @@ export default function MidiSlider({
   const { config } = control;
   const { sendCC } = useMIDI();
   const [localValue, setLocalValue] = useState(config.value);
+  const theme = useTheme();
   
-  // Set min and max values from config or use defaults
   const minVal = config.midi?.min !== undefined ? config.midi.min : 0;
   const maxVal = config.midi?.max !== undefined ? config.midi.max : 127;
-  
-  // Default to vertical slider unless specified
+  const color = config.color || theme.palette.primary.main;
+  const fillPercentage = ((localValue - minVal) / (maxVal - minVal)) * 100;
   const isVertical = config.orientation !== 'horizontal';
+
+  const sliderContainerRef = useRef<HTMLDivElement>(null);
   
+  // Calculate the width needed for the rotated input to match the container height
+  const [inputWidth, setInputWidth] = useState('100%');
+  
+  useEffect(() => {
+    if (isVertical && sliderContainerRef.current) {
+      const container = sliderContainerRef.current;
+      // The rotated input needs to be as wide as the container is tall
+      const heightPercent = (container.clientHeight / container.clientWidth) * 100;
+      setInputWidth(`${heightPercent}%`);
+    }
+  }, [isVertical]);
+
   useEffect(() => {
     setLocalValue(config.value);
   }, [config.value]);
-  
-  const handleChange = (_event: Event, newValue: number | number[]) => {
-    const value = Array.isArray(newValue) ? newValue[0] : newValue;
-    setLocalValue(value);
-  };
-  
-  const handleChangeCommitted = (_event: React.SyntheticEvent | Event, newValue: number | number[]) => {
-    const value = Array.isArray(newValue) ? newValue[0] : newValue;
-    
-    // If we have MIDI config and a selected output, send the MIDI message
-    if (config.midi && selectedMidiOutput && !isEditMode) {
-      sendCC(config.midi.channel, config.midi.cc, value);
-    }
-    
-    onChange(value);
-  };
-  
+
   return (
-    <Box
-      sx={{
-        height: '100%',
-        width: '100%',
-        display: 'flex',
-        flexDirection: isVertical ? 'column' : 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 1,
-      }}
-    >
+    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: 1 }}>
       <Typography
         variant="body2"
         sx={{
+          width: '100%',
           textAlign: 'center',
-          whiteSpace: 'nowrap',
+          mb: 1,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          mb: isVertical ? 1 : 0,
-          mr: isVertical ? 0 : 2,
+          whiteSpace: 'nowrap',
           userSelect: 'none',
+          color: fillPercentage > 0 ? theme.palette.getContrastText(color) : 'text.primary',
+          fontWeight: fillPercentage > 0 ? 'bold' : 'normal',
         }}
       >
         {config.label || 'Slider'}
       </Typography>
 
-      <Box sx={{ 
-        flexGrow: 1,
-        width: isVertical ? '80%' : '100%',
-        height: isVertical ? '100%' : '80%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <StyledSlider
-          orientation={isVertical ? 'vertical' : 'horizontal'}
-          value={localValue}
-          onChange={handleChange}
-          onChangeCommitted={handleChangeCommitted}
-          min={minVal}
-          max={maxVal}
-          valueLabelDisplay="auto"
-          color={config.color as any}
-          disabled={isEditMode}
-        />
-      </Box>
-      
-      <Typography
-        variant="caption"
-        sx={{ 
-          mt: isVertical ? 1 : 0,
-          ml: isVertical ? 0 : 2,
-          userSelect: 'none'
+      <Box
+        ref={sliderContainerRef}
+        sx={{
+          position: 'relative',
+          flexGrow: 1,
+          border: `2px solid ${color}`,
+          borderRadius: 1,
+          overflow: 'hidden',
+          backgroundColor: 'transparent',
         }}
       >
-        {localValue}
-      </Typography>
+        {/* Fill background */}
+        <Box
+          sx={{
+            position: 'absolute',
+            ...(isVertical ? {
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: `${fillPercentage}%`,
+            } : {
+              bottom: 0,
+              left: 0,
+              width: `${fillPercentage}%`,
+              height: '100%',
+            }),
+            backgroundColor: color,
+            pointerEvents: 'none',
+          }}
+        />
+        
+        {/* Value display */}
+        <Typography
+          variant="caption"
+          sx={{
+            position: 'absolute',
+            top: '5px',
+            right: '5px',
+            color: fillPercentage > 80 ? theme.palette.getContrastText(color) : 'text.primary',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        >
+          {localValue}
+        </Typography>
+
+        <input
+          type="range"
+          min={minVal}
+          max={maxVal}
+          value={localValue}
+          disabled={isEditMode}
+          onChange={(e) => {
+            const value = parseInt(e.target.value);
+            setLocalValue(value);
+            if (!isEditMode) {
+              if (config.midi && selectedMidiOutput) {
+                sendCC(config.midi.channel, config.midi.cc, value);
+              }
+              onChange(value);
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: isVertical ? inputWidth : '100%',
+            height: '100%',
+            opacity: 0,
+            margin: 0,
+            cursor: isEditMode ? 'pointer' : 'pointer',
+            WebkitAppearance: 'none',
+            MozAppearance: 'none',
+            ...(isVertical ? {
+              transform: 'rotate(-90deg)',
+              transformOrigin: 'left center',
+            } : {})
+          }}
+        />
+      </Box>
     </Box>
   );
 }

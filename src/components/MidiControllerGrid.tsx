@@ -14,8 +14,10 @@ interface MidiControllerGridProps {
   isEditMode: boolean;
   selectedControlId: string | null;
   onSelectControl: (id: string | null) => void;
-  onUpdateControl: (id: string, updatedValues: Partial<ControlItem['config']>) => void;
+  onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void; // Changed from ControlItem['config']
   selectedMidiOutput?: string | null;
+  onMoveControl?: (id: string, dx: number, dy: number) => void;
+  onResizeControl?: (id: string, dw: number, dh: number) => void;
 }
 
 export default function MidiControllerGrid({
@@ -26,7 +28,9 @@ export default function MidiControllerGrid({
   selectedControlId,
   onSelectControl,
   onUpdateControl,
-  selectedMidiOutput
+  selectedMidiOutput,
+  onMoveControl,
+  onResizeControl,
 }: MidiControllerGridProps) {
   const theme = useTheme();
   
@@ -45,7 +49,9 @@ export default function MidiControllerGrid({
       isSelected,
       onSelect: () => onSelectControl(control.id),
       onChange: (value: number) => {
-        onUpdateControl(control.id, { value });
+        onUpdateControl(control.id, { 
+          config: { ...control.config, value } 
+        });
       },
       // Pass the selected MIDI output ID to the control components
       selectedMidiOutput
