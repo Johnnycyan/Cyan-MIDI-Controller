@@ -68,7 +68,8 @@ export default function MidiSlider({
     return `${Math.round((value - minVal) / (maxVal - minVal) * 100)}%`;
   };
 
-  const handleMouseInteraction = (clientX: number, clientY: number) => {
+  // Common handler for both mouse and touch events
+  const handleInteraction = (clientX: number, clientY: number) => {
     if (!sliderRef.current || isEditMode) return;
 
     const rect = sliderRef.current.getBoundingClientRect();
@@ -108,6 +109,46 @@ export default function MidiSlider({
       midiSync.notify(config.midi.channel, config.midi.cc, value);
     }
     onChange(value);
+  };
+
+  // Update mouse handler to use common function
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (isEditMode) return;
+    handleInteraction(e.clientX, e.clientY);
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      handleInteraction(moveEvent.clientX, moveEvent.clientY);
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Add touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isEditMode) return;
+    e.preventDefault(); // Prevent scrolling
+    const touch = e.touches[0];
+    handleInteraction(touch.clientX, touch.clientY);
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      moveEvent.preventDefault();
+      const moveTouch = moveEvent.touches[0];
+      handleInteraction(moveTouch.clientX, moveTouch.clientY);
+    };
+
+    const handleTouchEnd = () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
   };
 
   // Subscribe to sync events
@@ -220,23 +261,10 @@ export default function MidiSlider({
             transform: isEditMode ? 'none' : 'scale(0.97)',
             boxShadow: 'none'
           },
+          touchAction: 'none', // Prevent default touch actions
         }}
-        onMouseDown={(e) => {
-          if (isEditMode) return;
-          handleMouseInteraction(e.clientX, e.clientY);
-          
-          const handleMouseMove = (moveEvent: MouseEvent) => {
-            handleMouseInteraction(moveEvent.clientX, moveEvent.clientY);
-          };
-          
-          const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-          };
-          
-          document.addEventListener('mousemove', handleMouseMove);
-          document.addEventListener('mouseup', handleMouseUp);
-        }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         <Box
           sx={{

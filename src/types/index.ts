@@ -66,3 +66,20 @@ export const demoChartData = [
   { timestamp: '2023-07-01T15:00:00', successful: 30, total: 32 },
   { timestamp: '2023-07-01T16:00:00', successful: 35, total: 38 },
 ];
+
+export interface ResizeHandleSettings {
+  minSize: number;
+  maxSize: number;
+  scalePercent: number;
+  color: string;
+  borderColor: string;
+  borderWidth: number;
+}
+
+export interface AppSettings {
+  resizeHandles: ResizeHandleSettings;
+  fontSize: {
+    controls: number;
+    labels: number;
+  };
+}

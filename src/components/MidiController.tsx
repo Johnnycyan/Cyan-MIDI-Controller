@@ -21,6 +21,7 @@ import {
   SpeedDialIcon,
   Divider,
   SelectChangeEvent,
+  Slider,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -45,6 +46,8 @@ import { createNewControl, findAvailablePosition, checkOverlap } from '../utils/
 import MidiControllerGrid from './MidiControllerGrid';
 import PresetManager from './PresetManager';
 import ControlTooltipEditor from './ControlTooltipEditor';
+import { loadSettings, saveSettings, defaultSettings } from '../utils/settings';
+import { AppSettings } from '../types';
 
 // Create localStorage utility functions
 const savePresets = (presets: MidiControllerPreset[]): void => {
@@ -125,6 +128,8 @@ export default function MidiController() {
 
   // Add state for fullscreen toggle
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
 
   // Load presets from local storage on initial load
   useEffect(() => {
@@ -245,6 +250,11 @@ export default function MidiController() {
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Load settings on mount
+  useEffect(() => {
+    setSettings(loadSettings());
   }, []);
 
   // Create a new preset
@@ -602,6 +612,12 @@ export default function MidiController() {
     setIsDragging(isDragging);
   };
 
+  const handleSettingsChange = (newSettings: Partial<AppSettings>) => {
+    const updatedSettings = { ...settings, ...newSettings };
+    setSettings(updatedSettings);
+    saveSettings(updatedSettings);
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* App Bar */}
@@ -717,6 +733,7 @@ export default function MidiController() {
             onResizeControl={resizeControl}
             selectedMidiOutput={midiDeviceId}
             onDragStateChange={handleDragStateChange} // New prop
+            settings={settings}
           />
         </Box>
         
@@ -922,6 +939,91 @@ export default function MidiController() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Note: Changing grid size could cause controls to overlap or go out of bounds.
           </Typography>
+
+          <Divider sx={{ my: 2 }} />
+      
+          <Typography variant="h6">Resize Handles</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <TextField
+                label="Minimum Size (px)"
+                type="number"
+                value={settings.resizeHandles.minSize}
+                onChange={(e) => handleSettingsChange({
+                  resizeHandles: {
+                    ...settings.resizeHandles,
+                    minSize: Number(e.target.value)
+                  }
+                })}
+                inputProps={{ min: 8, max: 32 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Maximum Size (px)"
+                type="number"
+                value={settings.resizeHandles.maxSize}
+                onChange={(e) => handleSettingsChange({
+                  resizeHandles: {
+                    ...settings.resizeHandles,
+                    maxSize: Number(e.target.value)
+                  }
+                })}
+                inputProps={{ min: 16, max: 64 }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ width: '100%' }}>
+                <Typography>Scale (% of cell)</Typography>
+                <Slider
+                  value={settings.resizeHandles.scalePercent}
+                  onChange={(_, value) => handleSettingsChange({
+                    resizeHandles: {
+                      ...settings.resizeHandles,
+                      scalePercent: value as number
+                    }
+                  })}
+                  min={5}
+                  max={50}
+                  valueLabelDisplay="auto"
+                />
+              </Box>
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 2 }} />
+          
+          <Typography variant="h6">Font Sizes</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <TextField
+                label="Control Labels"
+                type="number"
+                value={settings.fontSize.controls}
+                onChange={(e) => handleSettingsChange({
+                  fontSize: {
+                    ...settings.fontSize,
+                    controls: Number(e.target.value)
+                  }
+                })}
+                inputProps={{ min: 8, max: 32 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Label Controls"
+                type="number"
+                value={settings.fontSize.labels}
+                onChange={(e) => handleSettingsChange({
+                  fontSize: {
+                    ...settings.fontSize,
+                    labels: Number(e.target.value)
+                  }
+                })}
+                inputProps={{ min: 8, max: 32 }}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsSettingsOpen(false)}>Close</Button>

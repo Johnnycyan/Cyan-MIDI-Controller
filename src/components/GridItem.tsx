@@ -1,6 +1,6 @@
 import { memo, useRef, useState, useEffect } from 'react';
 import { Box } from '@mui/material';
-import { ControlItem, ControlType } from '../types';
+import { ControlItem, ControlType, AppSettings } from '../types';
 import MidiSlider from './ControlItems/MidiSlider';
 import MidiToggle from './ControlItems/MidiToggle';
 import MidiButton from './ControlItems/MidiButton';
@@ -28,6 +28,7 @@ interface GridItemProps {
     duration: number;
     easing: string;
   };
+  settings: AppSettings;
 }
 
 const GridItem = memo(({
@@ -43,20 +44,17 @@ const GridItem = memo(({
   onDragStart,
   onResizeStart,
   onContextMenu, // New prop
-  onLongPress,  // We'll actually use this now
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
+  settings,
 }: GridItemProps) => {
   const { position, size, type } = control;
   const itemRef = useRef<HTMLDivElement>(null);
 
   // Long press detection state
-  const [touchStartPosition, setTouchStartPosition] = useState<{x: number, y: number} | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasMovedRef = useRef<boolean>(false);
 
   // Add touch drag state
   const [touchDragActive, setTouchDragActive] = useState(false);
-  const touchDragOffset = useRef({ x: 0, y: 0 });
 
   // Calculate pixel positions from grid coordinates
   const left = position.x * cellWidth;
@@ -84,6 +82,7 @@ const GridItem = memo(({
       // Fix: Adapt the onSelect signature to match what control components expect
       onSelect: () => control.id && handleControlSelect(),
       isSelected,
+      settings: settings, // Pass settings to control components
     };
 
     switch (type as ControlType) {
@@ -102,11 +101,82 @@ const GridItem = memo(({
     }
   };
   
+  const createTouchToMouseHandler = (handle?: string) => {
+    return (e: React.TouchEvent) => {
+      if (!isEditMode) return; // Early return if not in edit mode
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const touch = e.touches[0];
+      setTouchDragActive(true);
+      
+      // Initial mousedown event
+      const mouseDownEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      
+      // Start the operation (either drag or resize)
+      if (handle) {
+        onResizeStart(mouseDownEvent as unknown as React.MouseEvent, handle as any);
+      } else {
+        onDragStart(mouseDownEvent as unknown as React.MouseEvent);
+      }
+
+      // Document-level handlers for continuous updates
+      const handleTouchMove = (e: TouchEvent) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        
+        const mouseMoveEvent = new MouseEvent('mousemove', {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          bubbles: true,
+          cancelable: true,
+          view: window
+        });
+        document.dispatchEvent(mouseMoveEvent);
+      };
+
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        
+        const mouseUpEvent = new MouseEvent('mouseup', {
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          bubbles: true,
+          cancelable: true,
+          view: window
+        });
+        document.dispatchEvent(mouseUpEvent);
+        
+        setTouchDragActive(false);
+        
+        // Clean up
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+
+      // Add temporary document listeners
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    };
+  };
+
   // Only render resize handles when selected AND in edit mode
   const renderResizeHandles = () => {
     if (!isSelected || !isEditMode) return null;
     
-    const handleSize = Math.min(16, cellWidth * 0.2, cellHeight * 0.2);
+    // Use settings for handle sizing
+    const { resizeHandles } = settings;
+    const minHandleSize = Math.max(resizeHandles.minSize, Math.min(cellWidth, cellHeight) * (resizeHandles.scalePercent / 100));
+    const maxHandleSize = Math.min(resizeHandles.maxSize, Math.min(cellWidth, cellHeight) * (resizeHandles.scalePercent / 100));
+    const handleSize = Math.min(maxHandleSize, Math.max(minHandleSize, Math.min(cellWidth, cellHeight) * 0.2));
     const halfHandleSize = handleSize / 2;
     
     const handles = [
@@ -127,8 +197,8 @@ const GridItem = memo(({
           position: 'absolute',
           width: handleSize,
           height: handleSize,
-          backgroundColor: 'primary.main',
-          border: '1px solid white',
+          backgroundColor: resizeHandles.color,
+          border: `${resizeHandles.borderWidth}px solid ${resizeHandles.borderColor}`,
           borderRadius: '50%',
           cursor: handle.cursor,
           top: handle.top,
@@ -142,6 +212,7 @@ const GridItem = memo(({
           },
         }}
         onMouseDown={(e) => onResizeStart(e, handle.position as any)}
+        onTouchStart={createTouchToMouseHandler(handle.position)}
         onClick={(e) => e.stopPropagation()}
       />
     ));
@@ -166,106 +237,6 @@ const GridItem = memo(({
     if (isEditMode && onContextMenu) {
       onContextMenu(e, itemRef.current);
     }
-  };
-
-  // Handle touch events for long press detection
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isEditMode || !touchStartPosition) return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const touch = e.touches[0];
-    hasMovedRef.current = true;
-
-    // Clear long press timer since we're moving
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
-
-    // Create a synthetic mouse move event
-    const mouseEvent = new MouseEvent('mousemove', {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
-
-    // Dispatch the event to trigger the grid's mousemove handler
-    document.dispatchEvent(mouseEvent);
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!isEditMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Create and dispatch mouseup event
-    if (hasMovedRef.current) {
-      const touch = e.changedTouches[0];
-      const mouseEvent = new MouseEvent('mouseup', {
-        clientX: touch.clientX,
-        clientY: touch.clientY,
-        bubbles: true,
-        cancelable: true,
-        view: window
-      });
-      document.dispatchEvent(mouseEvent);
-    }
-
-    // Reset states
-    setTouchDragActive(false);
-    setTouchStartPosition(null);
-    hasMovedRef.current = false;
-
-    if (longPressTimeoutRef.current) {
-      clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
-  };
-
-  // Handle touch events for long press detection
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isEditMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const touch = e.touches[0];
-    const rect = itemRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    // Calculate offset from touch point to element top-left
-    touchDragOffset.current = {
-      x: touch.clientX - rect.left,
-      y: touch.clientY - rect.top
-    };
-
-    // Start long press timer
-    const timer = setTimeout(() => {
-      if (!hasMovedRef.current) {
-        if (onLongPress) {
-          onLongPress(itemRef.current);
-        } else {
-          onContextMenu?.(e as unknown as React.MouseEvent, itemRef.current);
-        }
-      }
-    }, 500);
-
-    longPressTimeoutRef.current = timer;
-    setTouchStartPosition({ x: touch.clientX, y: touch.clientY });
-    setTouchDragActive(true);
-
-    // Simulate mouse down event
-    const mouseEvent = new MouseEvent('mousedown', {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
-
-    onDragStart(mouseEvent as unknown as React.MouseEvent);
   };
 
   // Cleanup timeout on unmount
@@ -322,7 +293,7 @@ const GridItem = memo(({
         transition: transitionStyle,
         opacity: isDragging || touchDragActive ? 0.8 : 1,
         transform: isDragging || touchDragActive ? 'scale(1.02)' : 'scale(1)',
-        pointerEvents: isDragging && !isEditMode ? 'none' : 'auto',
+        pointerEvents: 'auto', // Remove the isDragging condition to always allow interactions
         touchAction: 'none',
         userSelect: 'none',
         WebkitUserSelect: 'none',
@@ -332,10 +303,10 @@ const GridItem = memo(({
       onClick={isEditMode ? handleItemSelect : undefined}
       onContextMenu={handleContextMenu} // Add context menu handler
       // Add touch event handlers
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      onTouchStart={isEditMode ? createTouchToMouseHandler() : undefined}
+      onTouchMove={isEditMode ? (e) => e.preventDefault() : undefined} // Prevent any default touch handling
+      onTouchEnd={isEditMode ? (e) => e.preventDefault() : undefined}
+      onTouchCancel={isEditMode ? (e) => e.preventDefault() : undefined}
     >
       {renderControl()}
       {renderResizeHandles()}

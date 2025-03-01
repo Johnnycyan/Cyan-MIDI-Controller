@@ -1,5 +1,5 @@
 import { Box, useTheme } from '@mui/material';
-import { ControlItem } from '../types/index';
+import { ControlItem, AppSettings } from '../types/index';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import GridItem from './GridItem';
 import { checkOverlap, findAvailablePosition } from '../utils/gridHelpers';
@@ -34,6 +34,7 @@ interface MidiControllerGridProps {
     easing: string;
   };
   onDragStateChange?: (isDragging: boolean) => void;
+  settings: AppSettings;  // Add this prop to the interface
 }
 
 const MidiControllerGrid = ({
@@ -48,6 +49,7 @@ const MidiControllerGrid = ({
   selectedMidiOutput,
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
   onDragStateChange,
+  settings,  // Add settings to destructured props
 }: MidiControllerGridProps) => {
   const theme = useTheme();
   const gridRef = useRef<HTMLDivElement>(null);
@@ -627,6 +629,7 @@ const MidiControllerGrid = ({
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}
           transitionSettings={transitionSettings}
+          settings={settings}
         />
       ))}
 
