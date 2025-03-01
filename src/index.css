@@ -1,0 +1,13 @@
+/* ...existing styles... */
+
+/* Prevent context menu globally */
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}

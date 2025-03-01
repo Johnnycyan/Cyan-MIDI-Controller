@@ -43,17 +43,20 @@ const GridItem = memo(({
   onDragStart,
   onResizeStart,
   onContextMenu, // New prop
-  onLongPress, // New prop
+  onLongPress,  // We'll actually use this now
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
 }: GridItemProps) => {
   const { position, size, type } = control;
   const itemRef = useRef<HTMLDivElement>(null);
 
   // Long press detection state
-  const [touchStartTime, setTouchStartTime] = useState<number | null>(null);
   const [touchStartPosition, setTouchStartPosition] = useState<{x: number, y: number} | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasMovedRef = useRef<boolean>(false);
+
+  // Add touch drag state
+  const [touchDragActive, setTouchDragActive] = useState(false);
+  const touchDragOffset = useRef({ x: 0, y: 0 });
 
   // Calculate pixel positions from grid coordinates
   const left = position.x * cellWidth;
@@ -166,56 +169,103 @@ const GridItem = memo(({
   };
 
   // Handle touch events for long press detection
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isEditMode || !onLongPress) return;
-    
-    const touch = e.touches[0];
-    setTouchStartTime(Date.now());
-    setTouchStartPosition({
-      x: touch.clientX,
-      y: touch.clientY
-    });
-    hasMovedRef.current = false;
-    
-    // Set timeout for long press (700ms is standard for most touch interfaces)
-    longPressTimeoutRef.current = setTimeout(() => {
-      if (!hasMovedRef.current) {
-        // If no significant movement, trigger long press
-        onLongPress(itemRef.current);
-      }
-    }, 700);
-  };
-  
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartPosition || !touchStartTime) return;
+    if (!isEditMode || !touchStartPosition) return;
+    e.preventDefault();
+    e.stopPropagation();
     
     const touch = e.touches[0];
-    const moveThreshold = 10; // pixels
-    
-    // Check if touch has moved significantly (beyond threshold)
-    if (
-      Math.abs(touch.clientX - touchStartPosition.x) > moveThreshold ||
-      Math.abs(touch.clientY - touchStartPosition.y) > moveThreshold
-    ) {
-      hasMovedRef.current = true;
-      
-      // Clear the long press timeout as user is moving/scrolling
-      if (longPressTimeoutRef.current) {
-        clearTimeout(longPressTimeoutRef.current);
-        longPressTimeoutRef.current = null;
-      }
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    // Clean up the timeout to prevent memory leaks
+    hasMovedRef.current = true;
+
+    // Clear long press timer since we're moving
     if (longPressTimeoutRef.current) {
       clearTimeout(longPressTimeoutRef.current);
       longPressTimeoutRef.current = null;
     }
-    
-    setTouchStartTime(null);
+
+    // Create a synthetic mouse move event
+    const mouseEvent = new MouseEvent('mousemove', {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      bubbles: true,
+      cancelable: true,
+      view: window
+    });
+
+    // Dispatch the event to trigger the grid's mousemove handler
+    document.dispatchEvent(mouseEvent);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isEditMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Create and dispatch mouseup event
+    if (hasMovedRef.current) {
+      const touch = e.changedTouches[0];
+      const mouseEvent = new MouseEvent('mouseup', {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      document.dispatchEvent(mouseEvent);
+    }
+
+    // Reset states
+    setTouchDragActive(false);
     setTouchStartPosition(null);
+    hasMovedRef.current = false;
+
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  // Handle touch events for long press detection
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isEditMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const touch = e.touches[0];
+    const rect = itemRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    // Calculate offset from touch point to element top-left
+    touchDragOffset.current = {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+
+    // Start long press timer
+    const timer = setTimeout(() => {
+      if (!hasMovedRef.current) {
+        if (onLongPress) {
+          onLongPress(itemRef.current);
+        } else {
+          onContextMenu?.(e as unknown as React.MouseEvent, itemRef.current);
+        }
+      }
+    }, 500);
+
+    longPressTimeoutRef.current = timer;
+    setTouchStartPosition({ x: touch.clientX, y: touch.clientY });
+    setTouchDragActive(true);
+
+    // Simulate mouse down event
+    const mouseEvent = new MouseEvent('mousedown', {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      bubbles: true,
+      cancelable: true,
+      view: window
+    });
+
+    onDragStart(mouseEvent as unknown as React.MouseEvent);
   };
 
   // Cleanup timeout on unmount
@@ -270,9 +320,13 @@ const GridItem = memo(({
         boxSizing: 'border-box',
         cursor: isEditMode ? 'move' : 'default',
         transition: transitionStyle,
-        opacity: isDragging ? 0.8 : 1,
-        transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+        opacity: isDragging || touchDragActive ? 0.8 : 1,
+        transform: isDragging || touchDragActive ? 'scale(1.02)' : 'scale(1)',
         pointerEvents: isDragging && !isEditMode ? 'none' : 'auto',
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none', // Prevent iOS context menu
       }}
       onMouseDown={isEditMode ? onDragStart : undefined}
       onClick={isEditMode ? handleItemSelect : undefined}

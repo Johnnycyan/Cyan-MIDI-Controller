@@ -36,7 +36,7 @@ interface MidiControllerGridProps {
   onDragStateChange?: (isDragging: boolean) => void;
 }
 
-export default function MidiControllerGrid({
+const MidiControllerGrid = ({
   controls,
   columns,
   rows,
@@ -48,7 +48,7 @@ export default function MidiControllerGrid({
   selectedMidiOutput,
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
   onDragStateChange,
-}: MidiControllerGridProps) {
+}: MidiControllerGridProps) => {
   const theme = useTheme();
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
@@ -544,6 +544,20 @@ export default function MidiControllerGrid({
     onDragStateChange?.(true);
   }, [isEditMode, controlsById, onSelectControl, onDragStateChange]);
 
+  // Add touch move handler to document
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (dragState && isEditMode) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [dragState, isEditMode]);
+
   return (
     <Box
       ref={gridRef}
@@ -557,6 +571,10 @@ export default function MidiControllerGrid({
         overflow: 'hidden',
         boxShadow: theme.shadows[4],
         ...gridBackgroundStyle,
+        touchAction: 'none', // Prevent browser touch actions
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
       }}
       onClick={(e) => {
         if (e.currentTarget === e.target && isEditMode) {
@@ -567,6 +585,13 @@ export default function MidiControllerGrid({
         e.preventDefault(); // Prevent browser context menu
         if (e.currentTarget === e.target && isEditMode) {
           onSelectControl(null, null); // Deselect when right-clicking background
+        }
+      }}
+      onTouchStart={(e) => {
+        // Prevent scrolling while dragging
+        if (isEditMode) {
+          e.preventDefault();
+          e.stopPropagation();
         }
       }}
     >
@@ -626,4 +651,6 @@ export default function MidiControllerGrid({
       )}
     </Box>
   );
-}
+};
+
+export default MidiControllerGrid;

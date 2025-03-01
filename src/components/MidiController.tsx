@@ -32,6 +32,8 @@ import {
   SmartButton as ButtonIcon,
   PlayArrow as PlayArrowIcon,
   SlideshowOutlined as SliderIcon,
+  Fullscreen as FullscreenIcon,
+  FullscreenExit as FullscreenExitIcon,
 } from '@mui/icons-material';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -120,6 +122,9 @@ export default function MidiController() {
 
   // Add state for tracking if a control is being dragged
   const [isDragging, setIsDragging] = useState(false);
+
+  // Add state for fullscreen toggle
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Load presets from local storage on initial load
   useEffect(() => {
@@ -220,6 +225,27 @@ export default function MidiController() {
     const timer = setTimeout(attemptConnection, 500);
     return () => clearTimeout(timer);
   }, [midiDeviceId, isInitialized, selectOutputDevice, showNotification]);
+
+  // Handle fullscreen toggle
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  // Listen for fullscreen changes from F11 or Esc key
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Create a new preset
   const createNewPreset = () => {
@@ -609,6 +635,14 @@ export default function MidiController() {
           >
             {isEditMode ? 'Exit Edit Mode' : 'Edit Mode'}
           </Button>
+
+          <IconButton 
+            color="inherit"
+            onClick={toggleFullscreen}
+            sx={{ ml: 1 }}
+          >
+            {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+          </IconButton>
         </Toolbar>
       </AppBar>
       
