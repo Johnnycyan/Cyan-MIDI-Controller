@@ -27,7 +27,6 @@ interface SliderViewMode {
 export interface SliderConfig {
   steps?: number;
   viewMode?: Partial<SliderViewMode>;  // Changed to allow partial view mode settings
-  rampMs?: number;  // Time in milliseconds per value change
 }
 
 export interface ControlConfig {

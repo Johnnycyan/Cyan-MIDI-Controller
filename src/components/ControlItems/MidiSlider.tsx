@@ -4,7 +4,6 @@ import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
 import { saveControlValue, loadControlValue } from '../../utils/controlValueStorage';
 import { midiSync } from '../../utils/midiSync';
-import { valueRamper } from '../../utils/valueRamper';
 
 interface MidiSliderProps {
   control: ControlItem;
@@ -24,7 +23,6 @@ export default function MidiSlider({
   const [localValue, setLocalValue] = useState(config.value);
   const theme = useTheme();
   const sliderRef = useRef<HTMLDivElement>(null);
-  const isDraggingRef = useRef(false);
   
   const channel = config.midi?.channel ?? 1;  // Default to channel 1
   const cc = config.midi?.cc ?? 0;  // Default to CC 0
@@ -57,17 +55,16 @@ export default function MidiSlider({
   }, [control.id]);
 
   const snapToStep = (value: number) => {
-    const steps = config.sliderConfig?.steps;
-    if (!steps || typeof steps !== 'number' || steps <= 0) return value;
+    if (!config.sliderConfig?.steps) return value;
     
     const range = actualMax - actualMin;
-    const stepSize = range / steps;
+    const stepSize = range / config.sliderConfig.steps;
     
     // Calculate how many steps we are from the minimum
-    const stepsFromMin = Math.round((value - actualMin) / stepSize);
+    const steps = Math.round((value - actualMin) / stepSize);
     
-    // Convert steps back to value and ensure it's a number
-    return Number(actualMin + (stepsFromMin * stepSize));
+    // Convert steps back to value
+    return actualMin + (steps * stepSize);
   };
 
   // Allow any combination of min/max values including zero and negatives
@@ -97,46 +94,6 @@ export default function MidiSlider({
   // Add debounce ref and time constant
   const lastUserInteractionRef = useRef<number>(0);
   const MIDI_DEBOUNCE_MS = 2000; // Ignore MIDI input for 500ms after user interaction
-
-  // Add ref to track the last ramped MIDI value
-  const lastRampedValueRef = useRef<number>(config.value);
-
-  const handleValueChange = (value: number, isDragging: boolean = false) => {
-    setLocalValue(value);
-    saveControlValue(control.id, value);
-    
-    if (config.midi && selectedMidiOutput) {
-      const hasSteps = !!config.sliderConfig?.steps;
-      const rampMs = config.sliderConfig?.rampMs || 0;
-      const shouldRamp = hasSteps && rampMs > 0 || (!hasSteps && rampMs > 0);
-      
-      // Only start new ramp if we're not dragging or if this is a stepped slider with ramp enabled
-      if (shouldRamp && (hasSteps || !isDragging)) {
-        const effectiveRampMs = rampMs;
-        
-        // Use the last ramped value as the starting point during drag
-        const startValue = isDragging ? lastRampedValueRef.current : Math.round(localValue);
-        
-        valueRamper.startRamp(
-          startValue,
-          Math.round(value),
-          effectiveRampMs,
-          (rampValue) => {
-            lastRampedValueRef.current = rampValue; // Store the current ramped value
-            sendCC(channel, cc, rampValue);
-            midiSync.notify(channel, cc, rampValue);
-          }
-        );
-      } else {
-        // Immediate value change for non-stepped dragging or when ramping is disabled
-        const roundedValue = Math.round(value);
-        lastRampedValueRef.current = roundedValue; // Update the reference even for immediate changes
-        sendCC(channel, cc, roundedValue);
-        midiSync.notify(channel, cc, roundedValue);
-      }
-    }
-    onChange(value);
-  };
 
   // Common handler for both mouse and touch events
   const handleInteraction = (clientX: number, clientY: number) => {
@@ -175,8 +132,14 @@ export default function MidiSlider({
     // Ensure value is within bounds after snapping
     value = Math.max(actualMin, Math.min(actualMax, value));
     
-    // Pass the dragging state to handleValueChange
-    handleValueChange(value, isDraggingRef.current);
+    setLocalValue(value);
+    saveControlValue(control.id, value);
+    
+    if (config.midi && selectedMidiOutput) {
+      sendCC(channel, cc, Math.round(value));
+      midiSync.notify(channel, cc, Math.round(value));
+    }
+    onChange(value);
 
     // Record the interaction time
     lastUserInteractionRef.current = Date.now();
@@ -185,9 +148,6 @@ export default function MidiSlider({
   // Update mouse handler to use common function
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isEditMode) return;
-    isDraggingRef.current = true;
-    // Reset lastRampedValue to current value when starting a new drag
-    lastRampedValueRef.current = Math.round(localValue);
     handleInteraction(e.clientX, e.clientY);
     
     const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -195,7 +155,6 @@ export default function MidiSlider({
     };
     
     const handleMouseUp = () => {
-      isDraggingRef.current = false;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -208,10 +167,6 @@ export default function MidiSlider({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isEditMode) return;
     e.preventDefault(); // Prevent scrolling
-    isDraggingRef.current = true;
-    // Reset lastRampedValue to current value when starting a new touch
-    lastRampedValueRef.current = Math.round(localValue);
-    
     const touch = e.touches[0];
     handleInteraction(touch.clientX, touch.clientY);
 
@@ -222,7 +177,6 @@ export default function MidiSlider({
     };
 
     const handleTouchEnd = () => {
-      isDraggingRef.current = false;
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
     };
@@ -309,13 +263,6 @@ export default function MidiSlider({
 
     loadInitialValue();
   }, [config.midi, selectedMidiOutput, isEditMode, devices, channel, cc]);
-
-  // Stop any active ramp when unmounting
-  useEffect(() => {
-    return () => {
-      valueRamper.stopRamp();
-    };
-  }, []);
 
   return (
     <Box sx={{

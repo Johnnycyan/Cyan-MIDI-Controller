@@ -69,36 +69,6 @@ const ExtraTabContent = memo(({
             placeholder="Leave empty for smooth sliding"
           />
           
-          <TextField
-            label="Ramp Speed for Steps (ms/step)"
-            type="text"
-            value={selectedControl.config.sliderConfig?.rampMs ?? ''}
-            onChange={(e) => {
-              const value = e.target.value;
-              // Allow empty string for typing
-              if (value === '') {
-                updateControlConfig('sliderConfig', {
-                  ...selectedControl.config.sliderConfig,
-                  rampMs: undefined
-                });
-                return;
-              }
-
-              // Parse as integer and ensure it's positive
-              const numValue = parseInt(value, 10);
-              if (!isNaN(numValue) && numValue >= 0) {
-                updateControlConfig('sliderConfig', {
-                  ...selectedControl.config.sliderConfig,
-                  rampMs: numValue
-                });
-              }
-            }}
-            size="small"
-            fullWidth
-            sx={{ mb: 2 }}
-            placeholder="Leave empty for instant changes"
-          />
-
           {/* Display settings section */}
           <Box sx={{ mt: 2, mb: 1 }}>
             <Typography variant="caption" fontWeight="bold">Value Display Settings</Typography>
