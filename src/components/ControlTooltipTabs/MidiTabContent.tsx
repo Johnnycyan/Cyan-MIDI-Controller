@@ -44,7 +44,7 @@ const MidiTabContent = memo(({
         max={127}
       />
 
-      {(selectedControl.type === 'slider' || selectedControl.type === 'textbox') && (
+      {(selectedControl.type === 'textbox') && (
         <>
           <NumberField
             label="Min Value"
