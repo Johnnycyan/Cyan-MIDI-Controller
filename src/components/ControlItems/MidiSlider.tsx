@@ -136,8 +136,10 @@ export default function MidiSlider({
     saveControlValue(control.id, value);
     
     if (config.midi && selectedMidiOutput) {
-      sendCC(channel, cc, Math.round(value));
-      midiSync.notify(channel, cc, Math.round(value));
+      // Ensure MIDI CC values are integers
+      const midiValue = Math.round(value);
+      sendCC(channel, cc, midiValue);
+      midiSync.notify(channel, cc, midiValue);
     }
     onChange(value);
 
@@ -237,15 +239,18 @@ export default function MidiSlider({
                   return;
                 }
                 
-                setLocalValue(value);
-                onChange(value);
+                // Make sure incoming values are integers too
+                const intValue = Math.round(value);
+                setLocalValue(intValue);
+                onChange(intValue);
               }
             );
 
             // Send a request for the current value if the device supports it
             // Note: Not all devices support this feature
             try {
-              const success = sendCC(channel, 0x62, cc);
+              // Ensure request CC values are integers
+              const success = sendCC(channel, 0x62, Math.round(cc));
               if (!success) {
                 console.debug('Device might not support value request');
               }
