@@ -208,6 +208,10 @@ export default function MidiSlider({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isEditMode) return;
     e.preventDefault(); // Prevent scrolling
+    isDraggingRef.current = true;
+    // Reset lastRampedValue to current value when starting a new touch
+    lastRampedValueRef.current = Math.round(localValue);
+    
     const touch = e.touches[0];
     handleInteraction(touch.clientX, touch.clientY);
 
@@ -218,6 +222,7 @@ export default function MidiSlider({
     };
 
     const handleTouchEnd = () => {
+      isDraggingRef.current = false;
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
     };
