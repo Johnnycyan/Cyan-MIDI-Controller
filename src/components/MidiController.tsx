@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   AppBar,
@@ -43,9 +43,6 @@ import { createNewControl, findAvailablePosition, checkOverlap } from '../utils/
 import MidiControllerGrid from './MidiControllerGrid';
 import PresetManager from './PresetManager';
 import ControlTooltipEditor from './ControlTooltipEditor';
-
-// Lazy load the editor panel
-const ControlEditorPanel = lazy(() => import('./ControlEditorPanel'));
 
 // Create localStorage utility functions
 const savePresets = (presets: MidiControllerPreset[]): void => {
@@ -690,39 +687,41 @@ export default function MidiController() {
         </Box>
         
         {/* Tooltip Editor - replaces sidebar */}
-        <ControlTooltipEditor
-          anchorEl={editorAnchorEl}
-          selectedControl={getSelectedControl()}
-          onClose={handleCloseEditor}
-          onUpdateControl={updateControl}
-          onDeleteControl={deleteControl}
-          onMoveControl={moveControl}
-          gridColumns={gridColumns}
-          gridRows={gridRows}
-          isDragging={isDragging} // Pass drag state
-        />
+        {getSelectedControl() && editorAnchorEl && (
+          <ControlTooltipEditor
+            anchorEl={editorAnchorEl}
+            control={getSelectedControl()!} // Non-null assertion since we check above
+            onClose={handleCloseEditor}
+            updateControl={(updatedControl) => {
+              updateControl(updatedControl.id, updatedControl);
+            }}
+            onDeleteControl={deleteControl}
+            open={Boolean(editorAnchorEl)}
+            isMoving={isDragging}
+          />
+        )}
+
+        {/* Speed Dial for adding controls (only visible in edit mode) */}
+        {isEditMode && (
+          <SpeedDial
+            ariaLabel="Add control"
+            sx={{ position: 'absolute', bottom: 16, right: 16 }}
+            icon={<SpeedDialIcon />}
+            open={speedDialOpen}
+            onOpen={() => setSpeedDialOpen(true)}
+            onClose={() => setSpeedDialOpen(false)}
+          >
+            {speedDialActions.map((action) => (
+              <SpeedDialAction
+                key={action.name}
+                icon={action.icon}
+                tooltipTitle={action.name}
+                onClick={action.action}
+              />
+            ))}
+          </SpeedDial>
+        )}
       </Box>
-      
-      {/* Speed Dial for adding controls (only visible in edit mode) */}
-      {isEditMode && (
-        <SpeedDial
-          ariaLabel="Add control"
-          sx={{ position: 'absolute', bottom: 16, right: 16 }}
-          icon={<SpeedDialIcon />}
-          open={speedDialOpen}
-          onOpen={() => setSpeedDialOpen(true)}
-          onClose={() => setSpeedDialOpen(false)}
-        >
-          {speedDialActions.map((action) => (
-            <SpeedDialAction
-              key={action.name}
-              icon={action.icon}
-              tooltipTitle={action.name}
-              onClick={action.action}
-            />
-          ))}
-        </SpeedDial>
-      )}
       
       {/* Settings Dialog */}
       <Dialog

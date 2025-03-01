@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import {
   Box,
   Paper,
@@ -16,7 +16,6 @@ import {
   Divider,
   Grid,
   IconButton,
-  SelectChangeEvent
 } from '@mui/material';
 import { 
   Delete as DeleteIcon, 
@@ -25,7 +24,7 @@ import {
   ArrowBack, 
   ArrowForward 
 } from '@mui/icons-material';
-import { ControlItem, SliderConfig } from '../types/index';
+import { ControlItem } from '../types/index';
 
 // Create an optimized TabPanel component
 const TabPanel = memo(({ children, value, index }: {

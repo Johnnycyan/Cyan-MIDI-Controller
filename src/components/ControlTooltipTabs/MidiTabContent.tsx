@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, FormControl, Select, MenuItem, InputLabel } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import { NumberField } from './CommonComponents';
 
@@ -15,14 +15,17 @@ const MidiTabContent = memo(({
   return (
     <Box sx={{ pt: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-        <Box sx={{ width: '80px', flexShrink: 0 }}>
-          Channel:
-        </Box>
         <FormControl size="small" fullWidth>
+        <InputLabel id="channel-select-label">Channel</InputLabel>
           <Select
+            labelId="channel-select-label"
+            label="Channel"
             value={(selectedControl.config.midi?.channel || 1)}
             onChange={(e) => updateMidiConfig('channel', Number(e.target.value))}
             sx={{ height: 32 }}
+            MenuProps={{
+              sx: { zIndex: 9999 }
+            }}
           >
             {Array.from({ length: 16 }, (_, i) => (
               <MenuItem key={i + 1} value={i + 1}>

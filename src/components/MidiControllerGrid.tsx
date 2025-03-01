@@ -3,7 +3,6 @@ import { ControlItem } from '../types/index';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import GridItem from './GridItem';
 import { checkOverlap, findAvailablePosition } from '../utils/gridHelpers';
-import { TransitionGroup } from 'react-transition-group';
 
 // Type for position
 interface Position {
@@ -45,11 +44,8 @@ export default function MidiControllerGrid({
   selectedControlId,
   onSelectControl,
   onRightClickControl,
-  onLongPressControl, // New prop
   onUpdateControl,
   selectedMidiOutput,
-  onMoveControl,
-  onResizeControl,
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
   onDragStateChange,
 }: MidiControllerGridProps) {
@@ -66,7 +62,6 @@ export default function MidiControllerGrid({
     startSize: { w: number; h: number };
   } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [resizeHandleOffset] = useState({ x: 0, y: 0 });
   const [dragPreview, setDragPreview] = useState<{
     controlId: string;
     position: { x: number; y: number };
@@ -602,7 +597,7 @@ export default function MidiControllerGrid({
           // This prevents duplicate previews when dragging
           preview={!dragState && dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
           onSelect={(element) => selectControl(control.id, element)}
-          onContextMenu={(e, element) => handleControlRightClick(control.id, element)}
+          onContextMenu={(_, element) => handleControlRightClick(control.id, element)}
           onLongPress={(element) => handleControlLongPress(control.id, element)} // New prop
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}

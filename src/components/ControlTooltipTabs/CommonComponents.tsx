@@ -3,15 +3,12 @@ import { Box, Typography, TextField, Button, IconButton, Collapse } from '@mui/m
 import { ArrowUpward, ArrowDownward, ArrowBack, ArrowForward, ExpandMore, ExpandLess } from '@mui/icons-material';
 
 // Shared UI components for the tooltip tabs
-export const ColorField = memo(({ value, onChange, label }: {
+export const ColorField = memo(({ value, onChange }: {
   value: string;
   onChange: (newValue: string) => void;
   label?: string;
 }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-    <Typography variant="caption" sx={{ width: '80px', flexShrink: 0 }}>
-      {label || "Color"}:
-    </Typography>
     <TextField
       type="color"
       value={value}
@@ -30,11 +27,9 @@ export const TextField2 = memo(({ value, onChange, label, ...props }: {
   [key: string]: any;
 }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-    <Typography variant="caption" sx={{ width: '80px', flexShrink: 0 }}>
-      {label}:
-    </Typography>
     <TextField
       value={value}
+      label={label}
       onChange={(e) => onChange(e.target.value)}
       size="small"
       sx={{ width: '100%' }}
@@ -51,12 +46,10 @@ export const NumberField = memo(({ value, onChange, label, min, max }: {
   max?: number;
 }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-    <Typography variant="caption" sx={{ width: '80px', flexShrink: 0 }}>
-      {label}:
-    </Typography>
     <TextField
       type="number"
       value={value}
+      label={label}
       onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
       size="small"
       sx={{ width: '100%' }}

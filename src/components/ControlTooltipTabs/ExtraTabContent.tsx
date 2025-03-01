@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Box, FormControl, InputLabel, Select, MenuItem, Switch, FormControlLabel, Typography } from '@mui/material';
+import { Box, FormControl, Select, MenuItem, Switch, FormControlLabel, Typography, InputLabel } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import { NumberField, TextField2, ColorField } from './CommonComponents';
 
@@ -19,14 +19,17 @@ const ExtraTabContent = memo(({
       {selectedControl.type === 'slider' && (
         <>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Box sx={{ width: '80px', flexShrink: 0 }}>
-              Orientation:
-            </Box>
             <FormControl fullWidth size="small">
+              <InputLabel id="orientation-select-label">Orientation</InputLabel>
               <Select
+                labelId="orientation-select-label"
+                label="Orientation"
                 value={selectedControl.config.orientation || 'vertical'}
                 onChange={(e) => updateControlConfig('orientation', e.target.value)}
                 sx={{ height: 32 }}
+                MenuProps={{
+                  sx: { zIndex: 9999 }
+                }}
               >
                 <MenuItem value="vertical">Vertical</MenuItem>
                 <MenuItem value="horizontal">Horizontal</MenuItem>
@@ -124,6 +127,9 @@ const ExtraTabContent = memo(({
                 value={selectedControl.config.variant || 'body1'}
                 onChange={(e) => updateControlConfig('variant', e.target.value)}
                 sx={{ height: 32 }}
+                MenuProps={{
+                  sx: { zIndex: 9999 }
+                }}
               >
                 <MenuItem value="h1">Heading 1</MenuItem>
                 <MenuItem value="h2">Heading 2</MenuItem>
@@ -149,6 +155,9 @@ const ExtraTabContent = memo(({
                 value={selectedControl.config.textAlign || 'center'}
                 onChange={(e) => updateControlConfig('textAlign', e.target.value)}
                 sx={{ height: 32 }}
+                MenuProps={{
+                  sx: { zIndex: 9999 }
+                }}
               >
                 <MenuItem value="left">Left</MenuItem>
                 <MenuItem value="center">Center</MenuItem>
@@ -166,6 +175,9 @@ const ExtraTabContent = memo(({
                 value={selectedControl.config.fontWeight || 'normal'}
                 onChange={(e) => updateControlConfig('fontWeight', e.target.value)}
                 sx={{ height: 32 }}
+                MenuProps={{
+                  sx: { zIndex: 9999 }
+                }}
               >
                 <MenuItem value="normal">Normal</MenuItem>
                 <MenuItem value="bold">Bold</MenuItem>
