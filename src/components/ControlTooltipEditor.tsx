@@ -1,4 +1,4 @@
-import { memo, useState, useRef, lazy, Suspense } from 'react';
+import { memo, useState, lazy, Suspense } from 'react';
 import {
   Box,
   Paper,
@@ -8,7 +8,6 @@ import {
   Tab,
   IconButton,
   Popover as MuiPopover,
-  ClickAwayListener,
   Fade,
   CircularProgress,
 } from '@mui/material';
