@@ -93,7 +93,7 @@ export default function MidiSlider({
 
   // Add debounce ref and time constant
   const lastUserInteractionRef = useRef<number>(0);
-  const MIDI_DEBOUNCE_MS = 500; // Ignore MIDI input for 500ms after user interaction
+  const MIDI_DEBOUNCE_MS = 2000; // Ignore MIDI input for 500ms after user interaction
 
   // Common handler for both mouse and touch events
   const handleInteraction = (clientX: number, clientY: number) => {

@@ -39,7 +39,7 @@ export default function MidiButton({
 
   // Add debounce ref and time constant
   const lastUserInteractionRef = useRef<number>(0);
-  const MIDI_DEBOUNCE_MS = 500;
+  const MIDI_DEBOUNCE_MS = 2000;
 
   // Add MIDI monitoring setup
   useEffect(() => {

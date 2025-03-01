@@ -36,7 +36,7 @@ export default function MidiTextBox({
 
   // Add debounce ref and time constant
   const lastUserInteractionRef = useRef<number>(0);
-  const MIDI_DEBOUNCE_MS = 500;
+  const MIDI_DEBOUNCE_MS = 2000;
   
   // Update input value when config value changes
   useEffect(() => {
