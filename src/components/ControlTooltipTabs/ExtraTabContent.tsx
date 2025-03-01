@@ -14,6 +14,27 @@ const ExtraTabContent = memo(({
   updateControlConfig,
   updateSliderViewMode
 }: ExtraTabContentProps) => {
+  const handleStepsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow empty string for typing
+    if (value === '') {
+      updateControlConfig('sliderConfig', {
+        ...selectedControl.config.sliderConfig,
+        steps: value
+      });
+      return;
+    }
+
+    // Parse as integer and ensure it's positive
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue >= 0) {
+      updateControlConfig('sliderConfig', {
+        ...selectedControl.config.sliderConfig,
+        steps: numValue || undefined
+      });
+    }
+  };
+
   return (
     <Box sx={{ pt: 1 }}>
       {selectedControl.type === 'slider' && (
@@ -37,16 +58,15 @@ const ExtraTabContent = memo(({
             </FormControl>
           </Box>
 
-          <NumberField
+          <TextField
             label="Steps"
-            value={selectedControl.config.sliderConfig?.steps || 0}
-            onChange={(value) => {
-              updateControlConfig('sliderConfig', {
-                ...selectedControl.config.sliderConfig,
-                steps: value || undefined
-              });
-            }}
-            min={0}
+            type="text"
+            value={selectedControl.config.sliderConfig?.steps ?? ''}
+            onChange={handleStepsChange}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
+            placeholder="Leave empty for smooth sliding"
           />
           
           {/* Display settings section */}

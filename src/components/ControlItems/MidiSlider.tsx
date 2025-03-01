@@ -57,8 +57,14 @@ export default function MidiSlider({
   const snapToStep = (value: number) => {
     if (!config.sliderConfig?.steps) return value;
     
-    const step = (actualMax - actualMin) / config.sliderConfig.steps;
-    return Math.round(value / step) * step;
+    const range = actualMax - actualMin;
+    const stepSize = range / config.sliderConfig.steps;
+    
+    // Calculate how many steps we are from the minimum
+    const steps = Math.round((value - actualMin) / stepSize);
+    
+    // Convert steps back to value
+    return actualMin + (steps * stepSize);
   };
 
   // Allow any combination of min/max values including zero and negatives
@@ -113,19 +119,21 @@ export default function MidiSlider({
     }
 
     percentage = Math.max(0, Math.min(1, percentage));
-    // Use actualMin and actualMax for value calculation
+    // Calculate raw value first
     let value = actualMin + percentage * (actualMax - actualMin);
-    value = Math.round(value);
     
-    // Snap to steps if configured
+    // Snap to step if configured
     value = snapToStep(value);
+    
+    // Ensure value is within bounds after snapping
+    value = Math.max(actualMin, Math.min(actualMax, value));
     
     setLocalValue(value);
     saveControlValue(control.id, value);
     
     if (config.midi && selectedMidiOutput) {
-      sendCC(channel, cc, value);
-      midiSync.notify(channel, cc, value);
+      sendCC(channel, cc, Math.round(value));
+      midiSync.notify(channel, cc, Math.round(value));
     }
     onChange(value);
   };
