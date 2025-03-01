@@ -91,6 +91,10 @@ export default function MidiSlider({
     return `${Math.round(percentage)}%`;
   };
 
+  // Add debounce ref and time constant
+  const lastUserInteractionRef = useRef<number>(0);
+  const MIDI_DEBOUNCE_MS = 500; // Ignore MIDI input for 500ms after user interaction
+
   // Common handler for both mouse and touch events
   const handleInteraction = (clientX: number, clientY: number) => {
     if (!sliderRef.current || isEditMode) return;
@@ -136,6 +140,9 @@ export default function MidiSlider({
       midiSync.notify(channel, cc, Math.round(value));
     }
     onChange(value);
+
+    // Record the interaction time
+    lastUserInteractionRef.current = Date.now();
   };
 
   // Update mouse handler to use common function
@@ -186,6 +193,13 @@ export default function MidiSlider({
       channel,
       cc,
       (value) => {
+        // Check if we're within the debounce period
+        const timeSinceLastInteraction = Date.now() - lastUserInteractionRef.current;
+        if (timeSinceLastInteraction < MIDI_DEBOUNCE_MS) {
+          console.debug('Ignoring MIDI input during debounce period');
+          return;
+        }
+        
         setLocalValue(value);
         onChange(value);
       }
@@ -216,6 +230,13 @@ export default function MidiSlider({
               channel,
               cc,
               (value) => {
+                // Check if we're within the debounce period
+                const timeSinceLastInteraction = Date.now() - lastUserInteractionRef.current;
+                if (timeSinceLastInteraction < MIDI_DEBOUNCE_MS) {
+                  console.debug('Ignoring MIDI input during debounce period');
+                  return;
+                }
+                
                 setLocalValue(value);
                 onChange(value);
               }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
@@ -43,6 +43,10 @@ export default function MidiToggle({
   const [checked, setChecked] = useState(config.value === onValue);
   const [midiStatus, setMidiStatus] = useState<'ready'|'sent'|'error'>('ready');
   
+  // Add debounce ref and time constant
+  const lastUserInteractionRef = useRef<number>(0);
+  const MIDI_DEBOUNCE_MS = 500;
+
   // Update state when config value changes
   useEffect(() => {
     setChecked(config.value === onValue);
@@ -126,6 +130,13 @@ export default function MidiToggle({
       channel,
       cc,
       (value) => {
+        // Check if we're within the debounce period
+        const timeSinceLastInteraction = Date.now() - lastUserInteractionRef.current;
+        if (timeSinceLastInteraction < MIDI_DEBOUNCE_MS) {
+          console.debug('Ignoring MIDI input during debounce period');
+          return;
+        }
+
         setChecked(value === onValue);
         onChange(value);
       }
@@ -195,6 +206,9 @@ export default function MidiToggle({
     }
     
     onChange(newValue);
+
+    // Record the interaction time
+    lastUserInteractionRef.current = Date.now();
   };
 
   // Reset toggle handler when unmounting
@@ -267,19 +281,7 @@ export default function MidiToggle({
           },
         }}
       >
-        {checked && (
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              position: 'absolute', 
-              top: '5px', 
-              right: '5px',
-              color: theme.palette.getContrastText(color),
-            }}
-          >
-            ON
-          </Typography>
-        )}
+        {checked}
         
         <Typography
           variant="body2"

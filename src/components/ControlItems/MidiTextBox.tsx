@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, TextField, Typography } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
@@ -33,6 +33,10 @@ export default function MidiTextBox({
   // Add defaults for MIDI channel and CC
   const channel = config.midi?.channel ?? 1;  // Default to channel 1
   const cc = config.midi?.cc ?? 0;  // Default to CC 0
+
+  // Add debounce ref and time constant
+  const lastUserInteractionRef = useRef<number>(0);
+  const MIDI_DEBOUNCE_MS = 500;
   
   // Update input value when config value changes
   useEffect(() => {
@@ -50,6 +54,13 @@ export default function MidiTextBox({
       channel,
       cc,
       (value: number) => { // Add type annotation
+        // Check if we're within the debounce period
+        const timeSinceLastInteraction = Date.now() - lastUserInteractionRef.current;
+        if (timeSinceLastInteraction < MIDI_DEBOUNCE_MS) {
+          console.debug('Ignoring MIDI input during debounce period');
+          return;
+        }
+
         setInputValue(value.toString());
         onChange(value);
       }
@@ -87,6 +98,9 @@ export default function MidiTextBox({
       }
       onChange(newValue);
     }
+
+    // Record the interaction time
+    lastUserInteractionRef.current = Date.now();
   };
   
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
