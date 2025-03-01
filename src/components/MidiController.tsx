@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Box,
-  AppBar,
-  Toolbar,
-  Typography,
   Button,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -22,19 +18,14 @@ import {
   Divider,
   SelectChangeEvent,
   Slider,
+  Typography,
 } from '@mui/material';
 import {
-  Edit as EditIcon,
-  Settings as SettingsIcon,
-  Tune as TuneIcon,
   Label as LabelIcon,
   TextFields as TextFieldsIcon,
   ToggleOn as ToggleOnIcon,
   SmartButton as ButtonIcon,
-  PlayArrow as PlayArrowIcon,
   SlideshowOutlined as SliderIcon,
-  Fullscreen as FullscreenIcon,
-  FullscreenExit as FullscreenExitIcon,
 } from '@mui/icons-material';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -48,6 +39,9 @@ import PresetManager from './PresetManager';
 import ControlTooltipEditor from './ControlTooltipEditor';
 import { loadSettings, saveSettings, defaultSettings } from '../utils/settings';
 import { AppSettings } from '../types';
+import { useAppTheme } from '../context/ThemeContext';
+import TopBar from './TopBar';
+import ThemeSelector from './ThemeSelector';
 
 // Create localStorage utility functions
 const savePresets = (presets: MidiControllerPreset[]): void => {
@@ -130,6 +124,7 @@ export default function MidiController() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const { setTheme } = useAppTheme();
 
   // Load presets from local storage on initial load
   useEffect(() => {
@@ -614,53 +609,34 @@ export default function MidiController() {
 
   const handleSettingsChange = (newSettings: Partial<AppSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
+    
+    // Handle theme settings separately
+    if (newSettings.theme?.selectedThemeId) {
+      setTheme(newSettings.theme.selectedThemeId);
+      
+      // Update the theme in settings
+      updatedSettings.theme = {
+        ...settings.theme,
+        selectedThemeId: newSettings.theme.selectedThemeId,
+      };
+    }
+    
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
   };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* App Bar */}
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Cyan MIDI Controller - {getActivePresetName()}
-          </Typography>
-          
-          <Button 
-            color="inherit" 
-            onClick={() => setShowPresetManager(true)}
-            startIcon={<TuneIcon />}
-          >
-            Presets
-          </Button>
-          
-          <IconButton 
-            color="inherit"
-            onClick={() => setIsSettingsOpen(true)}
-          >
-            <SettingsIcon />
-          </IconButton>
-          
-          <Button 
-            color="inherit"
-            variant={isEditMode ? "outlined" : "text"}
-            startIcon={isEditMode ? <PlayArrowIcon /> : <EditIcon />}
-            onClick={toggleEditMode}
-            sx={{ ml: 1 }}
-          >
-            {isEditMode ? 'Exit Edit Mode' : 'Edit Mode'}
-          </Button>
-
-          <IconButton 
-            color="inherit"
-            onClick={toggleFullscreen}
-            sx={{ ml: 1 }}
-          >
-            {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+      {/* Replace AppBar with TopBar component */}
+      <TopBar 
+        presetName={getActivePresetName()}
+        isEditMode={isEditMode}
+        toggleEditMode={toggleEditMode}
+        isFullscreen={isFullscreen}
+        toggleFullscreen={toggleFullscreen}
+        showPresetManager={() => setShowPresetManager(true)}
+        showSettings={() => setIsSettingsOpen(true)}
+      />
       
       {/* Main Content */}
       <Box sx={{ 
@@ -1024,6 +1000,11 @@ export default function MidiController() {
               />
             </Grid>
           </Grid>
+
+          <Divider sx={{ my: 2 }} />
+          
+          {/* Add Theme Selector */}
+          <ThemeSelector />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsSettingsOpen(false)}>Close</Button>
