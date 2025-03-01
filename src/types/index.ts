@@ -76,10 +76,34 @@ export interface ResizeHandleSettings {
   borderWidth: number;
 }
 
+// Theme system types
+export interface ThemeColors {
+  primary: string;
+  secondary: string;
+  background: string;
+  surface: string;
+  text: string;
+  error: string;
+  warning: string;
+  success: string;
+  info: string;
+}
+
+export interface ThemePreset {
+  id: string;
+  name: string;
+  colors: ThemeColors;
+  dark: boolean;
+}
+
 export interface AppSettings {
   resizeHandles: ResizeHandleSettings;
   fontSize: {
     controls: number;
     labels: number;
+  };
+  theme: {
+    selectedThemeId: string;
+    customThemes: ThemePreset[];
   };
 }
