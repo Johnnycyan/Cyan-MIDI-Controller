@@ -20,8 +20,7 @@ class ToggleHandler {
   async sendToggleState(
     channel: number,
     cc: number,
-    value: number,
-    previousValue?: number
+    value: number
   ): Promise<boolean> {
     // Create a key for this control
     const key = `${channel}-${cc}`;

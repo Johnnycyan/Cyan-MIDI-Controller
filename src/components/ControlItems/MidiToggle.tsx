@@ -163,8 +163,6 @@ export default function MidiToggle({
     saveControlValue(control.id, newValue);
     
     if (config.midi) {
-      const previousValue = config.value;
-      
       // Optimistically update UI
       setChecked(newChecked);
       setMidiStatus('sent');
@@ -173,8 +171,7 @@ export default function MidiToggle({
         const success = await toggleHandler.sendToggleState(
           config.midi.channel || 1,
           config.midi.cc || 1,
-          newValue,
-          previousValue
+          newValue
         );
         
         if (!success) {
