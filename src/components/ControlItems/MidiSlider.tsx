@@ -69,7 +69,7 @@ export default function MidiSlider({
 
   // Allow any combination of min/max values including zero and negatives
   const formatDisplayValue = (value: number) => {
-    if (isEditMode) return value;
+    if (isEditMode) return Math.round(value);
 
     if (config.sliderConfig?.viewMode) {
       const { minValue, maxValue, extraText, decimalPlaces = 1 } = config.sliderConfig.viewMode;
