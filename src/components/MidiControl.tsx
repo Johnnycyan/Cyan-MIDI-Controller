@@ -17,7 +17,7 @@ const MidiControl: React.FC<MidiControlProps> = ({
   onDragEnd
 }) => {
   const controlRef = useRef<HTMLDivElement>(null);
-  const [touchTimeout, setTouchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [touchTimeout, setTouchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isEditMode) return;

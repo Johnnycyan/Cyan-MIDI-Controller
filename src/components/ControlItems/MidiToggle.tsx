@@ -50,7 +50,7 @@ export default function MidiToggle({
   
   // Reset MIDI status indicator after 1 second
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;;
     if (midiStatus !== 'ready') {
       timeout = setTimeout(() => setMidiStatus('ready'), 1000);
     }

@@ -51,7 +51,7 @@ const GridItem = memo(({
   const itemRef = useRef<HTMLDivElement>(null);
 
   // Long press detection state
-  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Add touch drag state
   const [touchDragActive, setTouchDragActive] = useState(false);
