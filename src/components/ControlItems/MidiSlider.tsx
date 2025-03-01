@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import useMIDI from '../../hooks/useMIDI';
@@ -24,10 +24,21 @@ export default function MidiSlider({
   const theme = useTheme();
   const sliderRef = useRef<HTMLDivElement>(null);
   
-  const minVal = config.midi?.min !== undefined ? config.midi.min : 0;
-  const maxVal = config.midi?.max !== undefined ? config.midi.max : 127;
+  const channel = config.midi?.channel ?? 1;  // Default to channel 1
+  const cc = config.midi?.cc ?? 0;  // Default to CC 0
+  const minVal = config.midi?.min ?? 0; // Use nullish coalescing
+  const maxVal = config.midi?.max ?? 127;
+  
+  // Validate and get the actual min/max values considering their order
+  const [actualMin, actualMax] = useMemo(() => {
+    return [
+      Math.min(minVal, maxVal),
+      Math.max(minVal, maxVal)
+    ];
+  }, [minVal, maxVal]);
+
   const color = config.color || theme.palette.primary.main;
-  const fillPercentage = ((localValue - minVal) / (maxVal - minVal)) * 100;
+  const fillPercentage = ((localValue - actualMin) / (actualMax - actualMin)) * 100;
   const isVertical = config.orientation !== 'horizontal';
 
   useEffect(() => {
@@ -46,26 +57,32 @@ export default function MidiSlider({
   const snapToStep = (value: number) => {
     if (!config.sliderConfig?.steps) return value;
     
-    const step = (maxVal - minVal) / config.sliderConfig.steps;
+    const step = (actualMax - actualMin) / config.sliderConfig.steps;
     return Math.round(value / step) * step;
   };
 
+  // Allow any combination of min/max values including zero and negatives
   const formatDisplayValue = (value: number) => {
     if (isEditMode) return value;
 
     if (config.sliderConfig?.viewMode) {
       const { minValue, maxValue, extraText, decimalPlaces = 1 } = config.sliderConfig.viewMode;
       
-      // Check if we have both min and max values defined
       if (minValue !== undefined && maxValue !== undefined) {
-        const percentage = (value - minVal) / (maxVal - minVal);
-        const displayValue = minValue + (maxValue - minValue) * percentage;
+        const range = maxValue - minValue;
+        const percentage = range === 0 
+          ? 0 
+          : (value - actualMin) / (actualMax - actualMin);
+          
+        const displayValue = minValue + (range * percentage);
         return `${displayValue.toFixed(decimalPlaces)}${extraText || ''}`;
       }
     }
 
-    // Default percentage display if viewMode is not properly configured
-    return `${Math.round((value - minVal) / (maxVal - minVal) * 100)}%`;
+    // Default percentage display
+    const range = actualMax - actualMin;
+    const percentage = range === 0 ? 0 : ((value - actualMin) / range) * 100;
+    return `${Math.round(percentage)}%`;
   };
 
   // Common handler for both mouse and touch events
@@ -96,7 +113,9 @@ export default function MidiSlider({
     }
 
     percentage = Math.max(0, Math.min(1, percentage));
-    let value = Math.round(minVal + percentage * (maxVal - minVal));
+    // Use actualMin and actualMax for value calculation
+    let value = actualMin + percentage * (actualMax - actualMin);
+    value = Math.round(value);
     
     // Snap to steps if configured
     value = snapToStep(value);
@@ -105,8 +124,8 @@ export default function MidiSlider({
     saveControlValue(control.id, value);
     
     if (config.midi && selectedMidiOutput) {
-      sendCC(config.midi.channel, config.midi.cc, value);
-      midiSync.notify(config.midi.channel, config.midi.cc, value);
+      sendCC(channel, cc, value);
+      midiSync.notify(channel, cc, value);
     }
     onChange(value);
   };
@@ -156,8 +175,8 @@ export default function MidiSlider({
     if (!config.midi || isEditMode) return;
 
     const unsubscribe = midiSync.subscribe(
-      config.midi.channel,
-      config.midi.cc,
+      channel,
+      cc,
       (value) => {
         setLocalValue(value);
         onChange(value);
@@ -165,7 +184,7 @@ export default function MidiSlider({
     );
 
     return unsubscribe;
-  }, [config.midi?.channel, config.midi?.cc, isEditMode]);
+  }, [channel, cc, isEditMode]);
 
   // Subscribe to MIDI messages when component mounts
   useEffect(() => {
@@ -186,8 +205,8 @@ export default function MidiSlider({
             // Select input device and subscribe to CC messages
             selectInputDevice(inputDevice.id);
             const unsubscribe = subscribeToCC(
-              config.midi.channel,
-              config.midi.cc,
+              channel,
+              cc,
               (value) => {
                 setLocalValue(value);
                 onChange(value);
@@ -197,7 +216,7 @@ export default function MidiSlider({
             // Send a request for the current value if the device supports it
             // Note: Not all devices support this feature
             try {
-              const success = sendCC(config.midi.channel, 0x62, config.midi.cc);
+              const success = sendCC(channel, 0x62, cc);
               if (!success) {
                 console.debug('Device might not support value request');
               }
@@ -214,7 +233,7 @@ export default function MidiSlider({
     };
 
     loadInitialValue();
-  }, [config.midi, selectedMidiOutput, isEditMode, devices]);
+  }, [config.midi, selectedMidiOutput, isEditMode, devices, channel, cc]);
 
   return (
     <Box sx={{

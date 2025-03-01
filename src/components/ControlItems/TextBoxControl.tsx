@@ -31,6 +31,10 @@ export default function TextBoxControl({
   const maxVal = config.midi?.max !== undefined ? config.midi.max : 127;
   const showLabel = config.showLabel !== false;
   const color = config.color || theme.palette.primary.main;
+
+  // Add defaults for MIDI channel and CC
+  const channel = config.midi?.channel ?? 1;  // Default to channel 1
+  const cc = config.midi?.cc ?? 0;  // Default to CC 0
   
   // Load saved value on mount
   useEffect(() => {
@@ -71,7 +75,7 @@ export default function TextBoxControl({
     
     // Send MIDI if applicable
     if (config.midi && selectedMidiOutput) {
-      sendCC(config.midi.channel, config.midi.cc, newValue);
+      sendCC(channel, cc, newValue);
     }
     
     onChange?.(newValue);

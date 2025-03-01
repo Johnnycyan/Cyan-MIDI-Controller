@@ -17,7 +17,7 @@ export default function MidiTextBox({
   selectedMidiOutput
 }: MidiTextBoxProps) {
   const { config } = control;
-  const { sendCC } = useMIDI();
+  const { sendCC, subscribeToCC } = useMIDI(); // Add subscribeToCC to destructuring
   
   // Ensure initial value is a valid number and converted to string
   const initialValue = typeof config.value === 'number' && !isNaN(config.value) 
@@ -29,6 +29,10 @@ export default function MidiTextBox({
   // Set min and max values from config or use defaults
   const minVal = config.midi?.min !== undefined ? config.midi.min : 0;
   const maxVal = config.midi?.max !== undefined ? config.midi.max : 127;
+
+  // Add defaults for MIDI channel and CC
+  const channel = config.midi?.channel ?? 1;  // Default to channel 1
+  const cc = config.midi?.cc ?? 0;  // Default to CC 0
   
   // Update input value when config value changes
   useEffect(() => {
@@ -37,6 +41,22 @@ export default function MidiTextBox({
       : '0';
     setInputValue(newValue);
   }, [config.value]);
+
+  // Update useEffect to use the defaulted values and fix types
+  useEffect(() => {
+    if (!config.midi || isEditMode) return;
+
+    const unsubscribe = subscribeToCC(
+      channel,
+      cc,
+      (value: number) => { // Add type annotation
+        setInputValue(value.toString());
+        onChange(value);
+      }
+    );
+
+    return unsubscribe;
+  }, [channel, cc, isEditMode, onChange]);
   
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -62,7 +82,8 @@ export default function MidiTextBox({
     // Only update if the value has changed
     if (newValue !== config.value) {
       if (config.midi && selectedMidiOutput) {
-        sendCC(config.midi.channel, config.midi.cc, newValue);
+        // Add null checks for channel and cc
+        sendCC(channel, cc, newValue);
       }
       onChange(newValue);
     }

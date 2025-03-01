@@ -10,6 +10,7 @@ import {
   Popover as MuiPopover,
   Fade,
   CircularProgress,
+  TextField,
 } from '@mui/material';
 import { 
   Delete as DeleteIcon,
@@ -97,16 +98,13 @@ const ControlTooltipEditor = memo(({ anchorEl, onClose, open, control, updateCon
       });
     },
     updateMidiConfig: (key: string, value: any) => {
+      const currentMidi = control.config.midi || {};
       updateControl({
         ...control,
         config: {
           ...control.config,
           midi: {
-            channel: control.config.midi?.channel ?? 1,
-            cc: control.config.midi?.cc ?? 0,
-            min: control.config.midi?.min ?? 0,
-            max: control.config.midi?.max ?? 127,
-            ...control.config.midi,
+            ...currentMidi,
             [key]: value
           }
         }
@@ -123,6 +121,37 @@ const ControlTooltipEditor = memo(({ anchorEl, onClose, open, control, updateCon
               ...(control.config.sliderConfig?.viewMode || {}),
               [key]: value
             }
+          }
+        }
+      });
+    }
+  };
+
+  const handleMidiValueChange = (key: 'min' | 'max', value: string) => {
+    // Allow empty string or just a minus sign
+    if (value === '' || value === '-') {
+      updateControl({
+        ...control,
+        config: {
+          ...control.config,
+          midi: {
+            ...control.config.midi,
+            [key]: value
+          }
+        }
+      });
+      return;
+    }
+
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      updateControl({
+        ...control,
+        config: {
+          ...control.config,
+          midi: {
+            ...control.config.midi,
+            [key]: numValue
           }
         }
       });
@@ -213,6 +242,20 @@ const ControlTooltipEditor = memo(({ anchorEl, onClose, open, control, updateCon
 
             <TabPanel value={activeTab} index={1}>
               <MidiTabContent {...sharedTabProps} />
+              <TextField
+                label="Min Value"
+                type="text" // Changed from "number" to "text"
+                value={control.config.midi?.min ?? ''}
+                onChange={(e) => handleMidiValueChange('min', e.target.value)}
+                size="small"
+              />
+              <TextField
+                label="Max Value"
+                type="text" // Changed from "number" to "text"
+                value={control.config.midi?.max ?? ''}
+                onChange={(e) => handleMidiValueChange('max', e.target.value)}
+                size="small"
+              />
             </TabPanel>
 
             <TabPanel value={activeTab} index={2}>

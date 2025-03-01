@@ -56,8 +56,8 @@ export default function MidiButton({
 
     if (selectInputDevice(inputDevice.id)) {
       const unsubscribe = subscribeToCC(
-        config.midi.channel || 1,
-        config.midi.cc || 1,
+        config.midi.channel ?? 1,  // Default to channel 1
+        config.midi.cc ?? 0,  // Default to CC 0
         (value: number) => {
           setIsPressed(value === onValue);
           onChange(value);
@@ -75,8 +75,8 @@ export default function MidiButton({
     if (!config.midi || isEditMode) return;
 
     const unsubscribe = midiSync.subscribe(
-      config.midi.channel,
-      config.midi.cc,
+      config.midi.channel ?? 1,  // Default to channel 1
+      config.midi.cc ?? 0,  // Default to CC 0
       (value) => {
         setIsPressed(value === onValue);
         onChange(value);
@@ -103,12 +103,12 @@ export default function MidiButton({
 
     if (config.midi) {
       try {
-        const success = sendCC(config.midi.channel || 1, config.midi.cc || 1, onValue);
+        const success = sendCC(config.midi.channel ?? 1, config.midi.cc ?? 0, onValue);  // Default to channel 1 and CC 0
         if (!success) {
           setMidiStatus('error');
           return;
         }
-        midiSync.notify(config.midi.channel, config.midi.cc, onValue);
+        midiSync.notify(config.midi.channel ?? 1, config.midi.cc ?? 0, onValue);  // Default to channel 1 and CC 0
       } catch (err) {
         console.error('Button error:', err);
         setMidiStatus('error');
@@ -130,12 +130,12 @@ export default function MidiButton({
 
     if (config.midi) {
       try {
-        const success = sendCC(config.midi.channel || 1, config.midi.cc || 1, offValue);
+        const success = sendCC(config.midi.channel ?? 1, config.midi.cc ?? 0, offValue);  // Default to channel 1 and CC 0
         if (!success) {
           setMidiStatus('error');
           return;
         }
-        midiSync.notify(config.midi.channel, config.midi.cc, offValue);
+        midiSync.notify(config.midi.channel ?? 1, config.midi.cc ?? 0, offValue);  // Default to channel 1 and CC 0
       } catch (err) {
         console.error('Button error:', err);
         setMidiStatus('error');

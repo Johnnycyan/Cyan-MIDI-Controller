@@ -34,9 +34,11 @@ export default function MidiToggle({
   } = useMIDI();
   const theme = useTheme();
   
-  // Set on and off values from config or use defaults
-  const onValue = config.midi?.max !== undefined ? config.midi.max : 127;
-  const offValue = config.midi?.min !== undefined ? config.midi.min : 0;
+  // Add defaults for MIDI channel and CC
+  const channel = config.midi?.channel ?? 1;  // Default to channel 1
+  const cc = config.midi?.cc ?? 0;  // Default to CC 0
+  const onValue = config.midi?.max ?? 127;
+  const offValue = config.midi?.min ?? 0;
   
   const [checked, setChecked] = useState(config.value === onValue);
   const [midiStatus, setMidiStatus] = useState<'ready'|'sent'|'error'>('ready');
@@ -94,10 +96,10 @@ export default function MidiToggle({
     // Select the input device and subscribe to CC changes
     if (selectInputDevice(inputDevice.id)) {
       const unsubscribe = subscribeToCC(
-        config.midi.channel || 1,
-        config.midi.cc || 1,
+        channel,
+        cc,
         (value: number) => {
-          console.log(`Received CC value ${value} for channel ${config.midi?.channel} cc ${config.midi?.cc}`);
+          console.log(`Received CC value ${value} for channel ${channel} cc ${cc}`);
           setChecked(value === onValue);
           onChange(value);
         }
@@ -105,7 +107,7 @@ export default function MidiToggle({
 
       // Request current value
       try {
-        sendCC(config.midi.channel || 1, 0x62, config.midi.cc || 1);
+        sendCC(channel, 0x62, cc);
       } catch (err) {
         console.debug('Value request not supported by device');
       }
@@ -121,8 +123,8 @@ export default function MidiToggle({
     if (!config.midi || isEditMode) return;
 
     const unsubscribe = midiSync.subscribe(
-      config.midi.channel,
-      config.midi.cc,
+      channel,
+      cc,
       (value) => {
         setChecked(value === onValue);
         onChange(value);
@@ -130,7 +132,7 @@ export default function MidiToggle({
     );
 
     return unsubscribe;
-  }, [config.midi?.channel, config.midi?.cc, isEditMode, onValue]);
+  }, [channel, cc, isEditMode, onValue]);
 
   // Load saved value on mount
   useEffect(() => {
@@ -169,8 +171,8 @@ export default function MidiToggle({
       
       try {
         const success = await toggleHandler.sendToggleState(
-          config.midi.channel || 1,
-          config.midi.cc || 1,
+          channel,
+          cc,
           newValue
         );
         
@@ -183,7 +185,7 @@ export default function MidiToggle({
         }
 
         // Add sync notification after successful MIDI send
-        midiSync.notify(config.midi.channel, config.midi.cc, newValue);
+        midiSync.notify(channel, cc, newValue);
       } catch (err) {
         console.error('Toggle error:', err);
         setMidiStatus('error');

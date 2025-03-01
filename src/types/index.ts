@@ -9,8 +9,8 @@ export interface Size {
 }
 
 export interface MidiConfig {
-  channel: number;     // MIDI channel (1-16)
-  cc: number;          // CC number (0-127)
+  channel?: number;     // Make channel optional
+  cc?: number;          // Make cc optional
   min?: number;        // Min value (0-127, default 0)
   max?: number;        // Max value (0-127, default 127)
 }

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Box, FormControl, Select, MenuItem, Switch, FormControlLabel, Typography, InputLabel } from '@mui/material';
+import { Box, FormControl, Select, MenuItem, Switch, FormControlLabel, Typography, InputLabel, TextField } from '@mui/material';
 import { ControlItem } from '../../types/index';
 import { NumberField, TextField2, ColorField } from './CommonComponents';
 
@@ -54,16 +54,48 @@ const ExtraTabContent = memo(({
             <Typography variant="caption" fontWeight="bold">Value Display Settings</Typography>
           </Box>
 
-          <NumberField
-            label="Min Display"
-            value={selectedControl.config.sliderConfig?.viewMode?.minValue || 0}
-            onChange={(value) => updateSliderViewMode('minValue', value)}
+          <TextField
+            label="Display Min Value"
+            type="text"
+            value={selectedControl.config.sliderConfig?.viewMode?.minValue ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string or just a minus sign
+              if (value === '' || value === '-') {
+                updateSliderViewMode('minValue', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                updateSliderViewMode('minValue', numValue);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
-
-          <NumberField
-            label="Max Display"
-            value={selectedControl.config.sliderConfig?.viewMode?.maxValue || 100}
-            onChange={(value) => updateSliderViewMode('maxValue', value)}
+          
+          <TextField
+            label="Display Max Value"
+            type="text"
+            value={selectedControl.config.sliderConfig?.viewMode?.maxValue ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string or just a minus sign
+              if (value === '' || value === '-') {
+                updateSliderViewMode('maxValue', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                updateSliderViewMode('maxValue', numValue);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
 
           <TextField2
