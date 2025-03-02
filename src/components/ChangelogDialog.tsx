@@ -14,9 +14,10 @@ import { getLatestChangelog } from '../utils/changelogFetcher';
 interface ChangelogDialogProps {
     open: boolean;
     onClose: () => void;
+    showUpdateButton?: boolean;
 }
 
-export default function ChangelogDialog({ open, onClose }: ChangelogDialogProps) {
+export default function ChangelogDialog({ open, onClose, showUpdateButton = false }: ChangelogDialogProps) {
     const [changelog, setChangelog] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -28,6 +29,11 @@ export default function ChangelogDialog({ open, onClose }: ChangelogDialogProps)
                 .finally(() => setLoading(false));
         }
     }, [open]);
+
+    const handleUpdate = () => {
+        console.log('[UpdateChecker] Updating application...');
+        window.location.reload();
+    };
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -45,6 +51,15 @@ export default function ChangelogDialog({ open, onClose }: ChangelogDialogProps)
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
+                {showUpdateButton && (
+                    <Button 
+                        variant="contained" 
+                        color="info" 
+                        onClick={handleUpdate}
+                    >
+                        UPDATE
+                    </Button>
+                )}
             </DialogActions>
         </Dialog>
     );
