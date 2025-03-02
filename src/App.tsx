@@ -26,16 +26,20 @@ function App() {
         while (styleSheet.cssRules.length > 0) {
           styleSheet.deleteRule(0);
         }
-        // Add a global rule that applies to all elements
+        
+        // Add a global rule to hide the cursor
         styleSheet.insertRule('* { cursor: none !important; }', 0);
         
-        // Disable hover effects by setting pointer-events to none
-        // This prevents hover styles from triggering
-        styleSheet.insertRule('*:hover { pointer-events: none !important; }', 1);
+        // Instead of disabling pointer events completely, which can break interactions,
+        // we'll just add a transparent overlay to catch hover events
+        styleSheet.insertRule('.cursor-hidden * { pointer-events: auto !important; }', 1);
         
-        // Explicitly disable common hover effects
-        styleSheet.insertRule('*:hover { background-color: inherit !important; color: inherit !important; }', 2);
-        styleSheet.insertRule('button:hover, a:hover, [role="button"]:hover { filter: none !important; transform: none !important; }', 3);
+        // Add a specific rule for hover states that preserves backgrounds
+        // but disables transitions and other hover effects
+        styleSheet.insertRule('* { transition: none !important; }', 2);
+        
+        // Disable common interactive effects without changing colors
+        styleSheet.insertRule('button:hover, a:hover, [role="button"]:hover { transform: none !important; }', 3);
         
         // Add class to body for potential additional styling
         document.body.classList.add('cursor-hidden');
