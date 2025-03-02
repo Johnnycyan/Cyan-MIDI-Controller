@@ -85,6 +85,75 @@ const MultiControlEditor = ({
     onUpdateControls(updatedControls);
   };
 
+  // First, update the updateConfig method to handle nested slider configs:
+  const updateSliderConfig = (key: string, value: any) => {
+    const updatedControls = selectedControls.map(control => {
+      if (!control.config.sliderConfig) {
+        control.config.sliderConfig = {};
+      }
+      
+      return {
+        ...control,
+        config: {
+          ...control.config,
+          sliderConfig: {
+            ...control.config.sliderConfig,
+            [key]: value
+          }
+        }
+      };
+    });
+    onUpdateControls(updatedControls);
+  };
+
+  // Add another function for slider viewMode settings
+  const updateSliderViewMode = (key: string, value: any) => {
+    const updatedControls = selectedControls.map(control => {
+      if (!control.config.sliderConfig) {
+        control.config.sliderConfig = {};
+      }
+      if (!control.config.sliderConfig.viewMode) {
+        control.config.sliderConfig.viewMode = {};
+      }
+      
+      return {
+        ...control,
+        config: {
+          ...control.config,
+          sliderConfig: {
+            ...control.config.sliderConfig,
+            viewMode: {
+              ...control.config.sliderConfig.viewMode,
+              [key]: value
+            }
+          }
+        }
+      };
+    });
+    onUpdateControls(updatedControls);
+  };
+
+  // For MIDI settings
+  const updateMidiConfig = (key: string, value: any) => {
+    const updatedControls = selectedControls.map(control => {
+      if (!control.config.midi) {
+        control.config.midi = {};
+      }
+      
+      return {
+        ...control,
+        config: {
+          ...control.config,
+          midi: {
+            ...control.config.midi,
+            [key]: value
+          }
+        }
+      };
+    });
+    onUpdateControls(updatedControls);
+  };
+
   // Handle delete for all selected controls
   const handleDeleteAll = () => {
     onDeleteControls(selectedControls.map(c => c.id));
@@ -132,6 +201,46 @@ const MultiControlEditor = ({
     );
     
     return allSame ? firstValue : '';
+  };
+
+  // Add getter functions for nested values
+  const getSliderConfig = (key: string, defaultValue: any = '') => {
+    if (selectedControls.length === 0) return defaultValue;
+    
+    const firstValue = selectedControls[0]?.config?.sliderConfig && 
+      (selectedControls[0]?.config?.sliderConfig as Record<string, any>)[key];
+    const allSame = selectedControls.every(control => 
+      control.config?.sliderConfig && 
+      (control.config?.sliderConfig as Record<string, any>)[key] === firstValue
+    );
+    
+    return allSame ? (firstValue ?? defaultValue) : '';
+  };
+
+  const getSliderViewMode = (key: string, defaultValue: any = '') => {
+    if (selectedControls.length === 0) return defaultValue;
+    
+    const firstValue = selectedControls[0]?.config?.sliderConfig?.viewMode && 
+      (selectedControls[0]?.config?.sliderConfig.viewMode as Record<string, any>)[key];
+    const allSame = selectedControls.every(control => 
+      control.config?.sliderConfig?.viewMode && 
+      (control.config?.sliderConfig.viewMode as Record<string, any>)[key] === firstValue
+    );
+    
+    return allSame ? (firstValue ?? defaultValue) : '';
+  };
+
+  const getMidiConfig = (key: string, defaultValue: any = '') => {
+    if (selectedControls.length === 0) return defaultValue;
+    
+    const firstValue = selectedControls[0]?.config?.midi && 
+      (selectedControls[0]?.config?.midi as Record<string, any>)[key];
+    const allSame = selectedControls.every(control => 
+      control.config?.midi && 
+      (control.config?.midi as Record<string, any>)[key] === firstValue
+    );
+    
+    return allSame ? (firstValue ?? defaultValue) : '';
   };
 
   // Update getAllColors to check both locations
@@ -246,6 +355,22 @@ const MultiControlEditor = ({
                   Delete Selected Controls
                 </Button>
               </Grid>
+
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>MIDI Settings</Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  label="MIDI Channel"
+                  type="number"
+                  value={getMidiConfig('channel', 1)}
+                  onChange={(e) => updateMidiConfig('channel', Number(e.target.value))}
+                  size="small"
+                  fullWidth
+                  inputProps={{ min: 1, max: 16 }}
+                />
+              </Grid>
             </Grid>
           </Box>
         )}
@@ -261,8 +386,8 @@ const MultiControlEditor = ({
                 <TextField
                   label="Min Value"
                   type="number"
-                  value={getCommonConfigValue('min', 0)}
-                  onChange={(e) => updateConfig('min', Number(e.target.value))}
+                  value={getMidiConfig('min', 0)}
+                  onChange={(e) => updateMidiConfig('min', Number(e.target.value))}
                   size="small"
                   fullWidth
                 />
@@ -272,8 +397,8 @@ const MultiControlEditor = ({
                 <TextField
                   label="Max Value"
                   type="number"
-                  value={getCommonConfigValue('max', 127)}
-                  onChange={(e) => updateConfig('max', Number(e.target.value))}
+                  value={getMidiConfig('max', 127)}
+                  onChange={(e) => updateMidiConfig('max', Number(e.target.value))}
                   size="small"
                   fullWidth
                 />
@@ -283,14 +408,77 @@ const MultiControlEditor = ({
                 <FormControl fullWidth size="small">
                   <InputLabel>Orientation</InputLabel>
                   <Select
-                    value={getCommonConfigValue('vertical', true) ? 'vertical' : 'horizontal'}
-                    onChange={(e) => updateConfig('vertical', e.target.value === 'vertical')}
+                    value={getCommonConfigValue('orientation', 'vertical')}
+                    onChange={(e) => updateConfig('orientation', e.target.value)}
                     label="Orientation"
                   >
                     <MenuItem value="vertical">Vertical</MenuItem>
                     <MenuItem value="horizontal">Horizontal</MenuItem>
                   </Select>
                 </FormControl>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                  Value Display Settings
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={6}>
+                <TextField
+                  label="Steps"
+                  type="number"
+                  value={getSliderConfig('steps', 0)}
+                  onChange={(e) => updateSliderConfig('steps', Number(e.target.value))}
+                  size="small"
+                  fullWidth
+                  inputProps={{ min: 0, max: 127 }}
+                />
+              </Grid>
+              
+              <Grid item xs={6}>
+                <TextField
+                  label="Decimal Places"
+                  type="number"
+                  value={getSliderViewMode('decimalPlaces', 1)}
+                  onChange={(e) => updateSliderViewMode('decimalPlaces', Number(e.target.value))}
+                  size="small"
+                  fullWidth
+                  inputProps={{ min: 0, max: 10 }}
+                />
+              </Grid>
+              
+              <Grid item xs={6}>
+                <TextField
+                  label="Display Min"
+                  type="number"
+                  value={getSliderViewMode('minValue', 0)}
+                  onChange={(e) => updateSliderViewMode('minValue', Number(e.target.value))}
+                  size="small"
+                  fullWidth
+                />
+              </Grid>
+              
+              <Grid item xs={6}>
+                <TextField
+                  label="Display Max"
+                  type="number"
+                  value={getSliderViewMode('maxValue', 100)}
+                  onChange={(e) => updateSliderViewMode('maxValue', Number(e.target.value))}
+                  size="small"
+                  fullWidth
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  label="Units"
+                  value={getSliderViewMode('extraText', '')}
+                  onChange={(e) => updateSliderViewMode('extraText', e.target.value)}
+                  size="small"
+                  fullWidth
+                  placeholder="e.g. dB, %, Hz"
+                />
               </Grid>
             </Grid>
           </Box>
