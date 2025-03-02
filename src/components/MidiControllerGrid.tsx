@@ -1005,6 +1005,24 @@ useEffect(() => {
   }
 }, [selectionBox?.active, handleGridMouseMove, handleGridMouseUp, handleGridTouchMove, handleGridTouchEnd]);
 
+// Add this useEffect hook near your other effects
+
+// Clear selection when leaving edit mode
+useEffect(() => {
+  if (!isEditMode) {
+    // Clear selected controls when edit mode is disabled
+    onSelectControl(null, null);
+    setSelectedControls([]);
+    onSelectControls?.([]);
+    
+    // Also clear any dragging or selection state
+    setDragState(null);
+    setDragPreview(null);
+    setSelectionBox(null);
+    setLastValidPositions({});
+  }
+}, [isEditMode, onSelectControl, onSelectControls]);
+
   return (
     <Box
       ref={gridRef}
