@@ -48,7 +48,7 @@ const MidiControllerGrid = ({
   selectedControlId,
   onSelectControl,
   onRightClickControl,
-  onLongPressControl,
+  // onLongPressControl,
   onUpdateControl,
   selectedMidiOutput,
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
@@ -582,8 +582,8 @@ const MidiControllerGrid = ({
       if (control) {
         if (dragState?.isMultiSelected && multiSelectedControlIds && dragPreview) {
           // For multi-selection, apply the delta between original and final positions to all controls
-          const mainControlDeltaX = dragPreview.position.x - Math.round(dragState.startPos.x);
-          const mainControlDeltaY = dragPreview.position.y - Math.round(dragState.startPos.y);
+          // const mainControlDeltaX = dragPreview.position.x - Math.round(dragState.startPos.x);
+          // const mainControlDeltaY = dragPreview.position.y - Math.round(dragState.startPos.y);
           
           multiSelectedControlIds.forEach(id => {
             if (id === control.id) {
@@ -985,7 +985,7 @@ const handleGridMouseUp = useCallback(() => {
           // This prevents duplicate previews when dragging
           preview={!dragState && dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
           onSelect={(element) => selectControl(control.id, element)}
-          onContextMenu={(e, element) => handleControlRightClick(
+          onContextMenu={(_, element) => handleControlRightClick(
             control.id, 
             element, 
             multiSelectedControlIds?.includes(control.id)
