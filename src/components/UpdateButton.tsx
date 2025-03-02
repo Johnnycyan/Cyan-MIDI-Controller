@@ -26,7 +26,7 @@ export default function UpdateButton() {
         checkUpdate();
 
         // Then check periodically
-        const interval = setInterval(checkUpdate, 1000 * 60 * 60); // Every hour
+        const interval = setInterval(checkUpdate, 1000 * 60 * 10); // Every 10 minutes
 
         return () => clearInterval(interval);
     }, []);
