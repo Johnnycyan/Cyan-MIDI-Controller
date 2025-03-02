@@ -1,6 +1,6 @@
 // Cache for version info to avoid too many requests
 let versionCache: { version: string; lastChecked: number } | null = null;
-const CACHE_DURATION = 1000 * 60 * 10; // 10 minutes
+const CACHE_DURATION = 1000 * 60 * 5; // 5 minutes
 
 export async function checkForUpdates(currentVersion: string): Promise<[boolean, string | null, string | null]> {
     try {

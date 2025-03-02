@@ -11,15 +11,21 @@ export default function UpdateButton() {
 
     useEffect(() => {
         const checkUpdate = async () => {
-            console.log(`[UpdateChecker] Checking for updates. Current version: ${pkg.version}`);
-            const [hasUpdate, updateVersion, errorMessage] = await checkForUpdates(pkg.version);
-            if (errorMessage) {
-                console.error(`[UpdateChecker] Error checking for updates: ${errorMessage}`);
-                return;
-            } else {
-                console.log(`[UpdateChecker] ${hasUpdate ? (updateVersion ? `Update available: ${updateVersion}` : "Update available but no version was supplied") : (updateVersion ? `No updates available. Server version: ${updateVersion}` : "No updates available")}`);
+            const currentTime = new Date().getTime();
+            const humanTime = new Date(currentTime).toISOString();
+            try {
+                console.log(`${humanTime} [UpdateChecker] Checking for updates. Current version: ${pkg.version}`);
+                const [hasUpdate, updateVersion, errorMessage] = await checkForUpdates(pkg.version);
+                if (errorMessage) {
+                    console.error(`${humanTime}  [UpdateChecker] Error checking for updates: ${errorMessage}`);
+                    return;
+                } else {
+                    console.log(`${humanTime}  [UpdateChecker] ${hasUpdate ? (updateVersion ? `Update available: ${updateVersion}` : "Update available but no version was supplied") : (updateVersion ? `No updates available. Server version: ${updateVersion}` : "No updates available")}`);
+                }
+                setUpdateAvailable(hasUpdate);
+            } catch (error) {
+                console.error(`${humanTime} [UpdateChecker] Error checking for updates:`, error);
             }
-            setUpdateAvailable(hasUpdate);
         };
 
         // Check immediately on mount
