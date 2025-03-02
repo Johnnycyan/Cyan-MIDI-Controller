@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, TextField, List, ListItem, ListItemText, IconButton } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, TextField, List, ListItem, ListItemText } from '@mui/material';
 import { Add, Delete, Edit, FileCopy, Download, Upload } from '@mui/icons-material';
 import { MidiControllerPreset } from '../types/index';
 import { useNotification } from '../context/NotificationContext';
@@ -100,7 +100,12 @@ export default function PresetManager({
       </Box>
 
       {/* Presets list */}
-      <List sx={{ bgcolor: 'background.paper' }}>
+      <List sx={{ 
+        bgcolor: 'background.paper',
+        borderRadius: 1, 
+        height: 450,
+        overflow: 'auto',
+        }}>
         {presets.length === 0 ? (
           <Typography variant="body2" sx={{ textAlign: 'center', py: 2 }}>
             No presets found. Create a new preset to get started.
@@ -110,86 +115,105 @@ export default function PresetManager({
             <ListItem
               key={preset.id}
               sx={{
-                mb: 1,
-                border: '1px solid',
-                borderColor: preset.id === activePresetId ? 'primary.main' : 'divider',
-                borderRadius: 1,
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
+              mb: 1,
+              ml: 1,
+              mr: 1,
+              width: 'auto',
+              border: '1px solid',
+              borderColor: preset.id === activePresetId ? 'primary.main' : 'divider',
+              borderRadius: 1,
+              cursor: 'pointer',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
               }}
               onClick={() => onSelectPreset(preset.id)}
             >
               <ListItemText
-                primary={preset.name}
-                secondary={`${preset.controls.length} controls | ${preset.gridSize.columns}x${preset.gridSize.rows} grid`}
+              primary={preset.name}
+              secondary={`${preset.controls.length} controls | ${preset.gridSize.columns}x${preset.gridSize.rows} grid`}
               />
-              <Box>
-                <IconButton 
-                  edge="end" 
-                  aria-label="edit"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditPresetId(preset.id);
-                    setEditPresetName(preset.name);
-                    setEditDialogOpen(true);
-                  }}
-                >
-                  <Edit fontSize="small" />
-                </IconButton>
-                
-                <IconButton 
-                  edge="end" 
-                  aria-label="duplicate"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDuplicatePreset(preset.id);
-                    showNotification('Preset duplicated', 'success');
-                  }}
-                >
-                  <FileCopy fontSize="small" />
-                </IconButton>
-                
-                <IconButton 
-                  edge="end" 
-                  aria-label="delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeletePreset(preset.id);
-                    showNotification('Preset deleted', 'success');
-                  }}
-                >
-                  <Delete fontSize="small" />
-                </IconButton>
-                
-                <IconButton 
-                  edge="end" 
-                  aria-label="export"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    try {
-                      const json = exportPresetToJson(preset);
-                      const blob = new Blob([json], { type: 'application/json' });
-                      const url = URL.createObjectURL(blob);
-                      
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `${preset.name.replace(/\s+/g, '-')}.json`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                      
-                      showNotification('Preset exported successfully', 'success');
-                    } catch (error) {
-                      console.error('Export failed', error);
-                      showNotification('Failed to export preset', 'error');
-                    }
-                  }}
-                >
-                  <Download fontSize="small" />
-                </IconButton>
+              <Box sx={{ 
+              display: 'flex', 
+              gap: 1, 
+              mt: 1,
+              width: '100%'
+              }}>
+              <Button
+                size="large"
+                startIcon={<Edit />}
+                variant="outlined"
+                fullWidth
+                onClick={(e) => {
+                e.stopPropagation();
+                setEditPresetId(preset.id);
+                setEditPresetName(preset.name);
+                setEditDialogOpen(true);
+                }}
+              >
+                Rename
+              </Button>
+              
+              <Button
+                size="large"
+                startIcon={<FileCopy />}
+                variant="outlined"
+                fullWidth
+                onClick={(e) => {
+                e.stopPropagation();
+                onDuplicatePreset(preset.id);
+                showNotification('Preset duplicated', 'success');
+                }}
+              >
+                Duplicate
+              </Button>
+              
+              <Button
+                size="large"
+                startIcon={<Download />}
+                variant="outlined"
+                fullWidth
+                onClick={(e) => {
+                e.stopPropagation();
+                try {
+                  const json = exportPresetToJson(preset);
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${preset.name.replace(/\s+/g, '-')}.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  
+                  showNotification('Preset exported successfully', 'success');
+                } catch (error) {
+                  console.error('Export failed', error);
+                  showNotification('Failed to export preset', 'error');
+                }
+                }}
+              >
+                Export
+              </Button>
+
+              <Button
+                size="large"
+                startIcon={<Delete />}
+                variant="outlined"
+                color="error"
+                fullWidth
+                onClick={(e) => {
+                e.stopPropagation();
+                onDeletePreset(preset.id);
+                showNotification('Preset deleted', 'success');
+                }}
+              >
+                Delete
+              </Button>
               </Box>
             </ListItem>
           ))

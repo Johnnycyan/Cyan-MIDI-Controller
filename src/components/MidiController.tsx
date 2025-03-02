@@ -1015,11 +1015,11 @@ export default function MidiController() {
       <Dialog
         open={showPresetManager}
         onClose={() => setShowPresetManager(false)}
-        maxWidth="sm"
+        maxWidth="lg"
         fullWidth
       >
         <DialogTitle>Preset Manager</DialogTitle>
-        <DialogContent sx={{ minHeight: '300px' }}>
+        <DialogContent sx={{ minHeight: '500px' }}>
           <PresetManager
             presets={presets}
             activePresetId={activePresetId}
