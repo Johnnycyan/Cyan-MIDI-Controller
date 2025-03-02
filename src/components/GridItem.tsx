@@ -316,7 +316,7 @@ const GridItem = memo(({
         {renderPreview()}
       </Box>
       
-      {/* Separate selection border component that's not clipped by the grid */}
+      {/* Animated selection border with optimized dancing border effect */}
       {(isSelected || isMultipleSelected) && isEditMode && (
         <Box
           sx={{
@@ -327,12 +327,31 @@ const GridItem = memo(({
             height: height,
             pointerEvents: 'none',
             boxSizing: 'border-box',
-            border: '2px dashed',
             borderRadius: 1,
             zIndex: 10,
-            borderColor: isSelected 
-              ? theme.palette.primary.main 
-              : theme.palette.secondary.main,
+            // No visible border
+            border: 'none',
+            
+            // Improved dancing border effect using multiple background gradients
+            backgroundImage: `
+              linear-gradient(90deg, ${theme.palette.primary.main} 50%, transparent 50%), 
+              linear-gradient(90deg, ${theme.palette.primary.main} 50%, transparent 50%), 
+              linear-gradient(0deg, ${theme.palette.primary.main} 50%, transparent 50%), 
+              linear-gradient(0deg, ${theme.palette.primary.main} 50%, transparent 50%)
+            `,
+            backgroundRepeat: 'repeat-x, repeat-x, repeat-y, repeat-y',
+            backgroundSize: '15px 2px, 15px 2px, 2px 15px, 2px 15px',
+            backgroundPosition: 'left top, right bottom, left bottom, right top',
+            animation: 'borderDance 1s infinite linear',
+            
+            '@keyframes borderDance': {
+              '0%': {
+                backgroundPosition: 'left top, right bottom, left bottom, right top',
+              },
+              '100%': {
+                backgroundPosition: 'left 15px top, right 15px bottom, left bottom 15px, right top 15px',
+              },
+            },
           }}
         />
       )}
