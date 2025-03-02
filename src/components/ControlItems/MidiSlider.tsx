@@ -287,7 +287,7 @@ export default function MidiSlider({
             mb: 1,
             borderRadius: 1,
             backgroundColor: color,
-            padding: '4px 8px',
+            padding: '4px',
             textAlign: 'center',
             boxShadow: theme.shadows[1],
           }}
