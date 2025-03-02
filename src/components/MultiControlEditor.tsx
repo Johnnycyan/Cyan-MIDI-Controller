@@ -222,9 +222,9 @@ const MultiControlEditor = ({
                   label="Color"
                   value={getCommonAttributeValue('color', '#3f51b5')}
                   onChange={(color) => {
-                    // Make sure color is a valid hex color
+                    // Make sure color is a valid hex color and apply it immediately
                     if (color && color.startsWith('#')) {
-                      console.log('Valid color selected:', color);
+                      console.log('Valid color selected, applying immediately:', color);
                       updateCommonAttribute('color', color);
                     } else {
                       console.warn('Invalid color format:', color);

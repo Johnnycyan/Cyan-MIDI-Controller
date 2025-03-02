@@ -1,25 +1,31 @@
 import { memo, useState } from 'react';
 import { Box, Typography, TextField, Button, IconButton, Collapse } from '@mui/material';
 import { ArrowUpward, ArrowDownward, ArrowBack, ArrowForward, ExpandMore, ExpandLess } from '@mui/icons-material';
+import ColorPicker from '../ColorPicker';  // Import the ColorPicker component
 
 // Shared UI components for the tooltip tabs
-export const ColorField = memo(({ value, onChange }: {
+export const ColorField = memo(({ value, onChange, label }: {
   value: string;
   onChange: (newValue: string) => void;
   label?: string;
 }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-    <TextField
-      type="color"
+  <Box sx={{ mb: 1 }}>
+    <ColorPicker
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      size="small"
-      sx={{ width: '100%' }}
-      InputProps={{ sx: { height: 32 } }}
+      onChange={(newValue) => {
+        // Apply color changes immediately
+        if (newValue && newValue.startsWith('#')) {
+          onChange(newValue);
+        }
+      }}
+      label={label}
+      fullWidth
+      multipleValues={[value]} // Just provide the current color
     />
   </Box>
 ));
 
+// Rest of the file remains unchanged
 export const TextField2 = memo(({ value, onChange, label, ...props }: {
   value: string;
   onChange: (newValue: string) => void;

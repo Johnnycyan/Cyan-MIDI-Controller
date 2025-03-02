@@ -25,6 +25,7 @@ import {
   ArrowForward 
 } from '@mui/icons-material';
 import { ControlItem } from '../types/index';
+import ColorPicker from './ColorPicker';
 
 // Create an optimized TabPanel component
 const TabPanel = memo(({ children, value, index }: {
@@ -52,14 +53,17 @@ const ColorField = memo(({ value, onChange, label }: {
   onChange: (newValue: string) => void;
   label?: string;
 }) => (
-  <TextField
-    label={label || "Color"}
-    type="color"
+  <ColorPicker
     value={value}
-    onChange={(e) => onChange(e.target.value)}
+    onChange={(newValue) => {
+      // Apply color changes immediately
+      if (newValue && newValue.startsWith('#')) {
+        onChange(newValue);
+      }
+    }}
+    label={label}
     fullWidth
-    margin="normal"
-    size="small"
+    multipleValues={[value]} // Just provide the current color
   />
 ));
 
@@ -217,6 +221,7 @@ function ControlEditorPanel({
 
           {selectedControl.type !== 'label' && (
             <ColorField
+              label="Color"
               value={selectedControl.config.color || '#2196f3'}
               onChange={(newValue) => updateControlConfig('color', newValue)}
             />

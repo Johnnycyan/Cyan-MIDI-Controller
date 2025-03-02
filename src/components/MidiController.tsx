@@ -419,15 +419,17 @@ export default function MidiController() {
   };
   
   // Update a control
-  const updateControl = (id: string, updatedValues: Partial<ControlItem>) => {
-    const updatedControls = controls.map(control => {
-      if (control.id === id) {
-        return { ...control, ...updatedValues };
-      }
-      return control;
-    });
+  const handleUpdateControl = (id: string, updatedValues: Partial<ControlItem>) => {
+    setControls(prevControls => 
+      prevControls.map(control => 
+        control.id === id 
+          ? { ...control, ...updatedValues } 
+          : control
+      )
+    );
     
-    setControls(updatedControls);
+    // If you have any data saving logic, consider triggering it here as well
+    // saveControlsToLocalStorage();
   };
   
   // Delete a control
@@ -684,13 +686,18 @@ export default function MidiController() {
       return acc;
     }, {} as Record<string, ControlItem>);
 
-    // Update the main controls array
-    setControls(controls.map(control => {
-      if (updatedControlsById[control.id]) {
-        return updatedControlsById[control.id];
-      }
-      return control;
-    }));
+    // Update the main controls array and force a re-render
+    setControls(prevControls => {
+      const newControls = prevControls.map(control => {
+        if (updatedControlsById[control.id]) {
+          return updatedControlsById[control.id];
+        }
+        return control;
+      });
+      
+      // Return a new array to ensure React re-renders
+      return [...newControls];
+    });
   };
 
   const deleteMultipleControls = (ids: string[]) => {
@@ -782,7 +789,7 @@ export default function MidiController() {
             onSelectControls={handleControlsSelect} // Add this
             onRightClickControl={handleControlRightClick}
             onLongPressControl={handleControlLongPress}
-            onUpdateControl={updateControl}
+            onUpdateControl={handleUpdateControl}
             onMoveControl={moveControl}
             onResizeControl={resizeControl}
             selectedMidiOutput={midiDeviceId}
@@ -798,7 +805,7 @@ export default function MidiController() {
             control={getSelectedControl()!} // Non-null assertion since we check above
             onClose={handleCloseEditor}
             updateControl={(updatedControl) => {
-              updateControl(updatedControl.id, updatedControl);
+              handleUpdateControl(updatedControl.id, updatedControl);
             }}
             onDeleteControl={deleteControl}
             open={Boolean(editorAnchorEl)}

@@ -40,7 +40,11 @@ const ColorPicker = ({ value, onChange, label, fullWidth, multipleValues = [] }:
   const handleColorChange = (newColor: string) => {
     console.log('MuiColorInput onChange fired with:', newColor);
     setInternalValue(newColor);
-    onChange(newColor);
+    
+    // Immediately propagate changes, as long as it's a valid hex color
+    if (newColor && newColor.startsWith('#')) {
+      onChange(newColor);
+    }
   };
 
   // Handle click to show multi-color palette
@@ -67,7 +71,7 @@ const ColorPicker = ({ value, onChange, label, fullWidth, multipleValues = [] }:
   };
 
   return (
-    <Box>
+    <Box sx={{ mt: 2, mb: 1 }}> {/* Add consistent margin like other form fields */}
       {label && <Typography variant="body2" mb={1}>{label}</Typography>}
       
       <Box 
