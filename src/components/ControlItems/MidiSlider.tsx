@@ -114,6 +114,7 @@ export default function MidiSlider({
     };
 
     let percentage;
+    // Important: sliderRef now only refers to the actual slider part, not the label
     if (isVertical) {
       const height = scaledRect.bottom - scaledRect.top;
       percentage = 1 - ((clientY - scaledRect.top) / height);
@@ -274,28 +275,39 @@ export default function MidiSlider({
       width: '100%', 
       height: '100%', 
       display: 'flex',
-      flexDirection: isVertical ? 'column' : 'column', // Always column
+      flexDirection: 'column',
       padding: 1,
       userSelect: 'none',
     }}>
+      {/* Label for vertical sliders */}
       {isVertical && (
-        <Typography
-          variant="body2"
+        <Box
           sx={{
             width: '100%',
-            textAlign: 'center',
             mb: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            color: fillPercentage > 0 ? theme.palette.getContrastText(color) : 'text.primary',
-            fontWeight: fillPercentage > 0 ? 'bold' : 'normal',
+            borderRadius: 1,
+            backgroundColor: color,
+            padding: '4px 8px',
+            textAlign: 'center',
+            boxShadow: theme.shadows[1],
           }}
         >
-          {config.label || 'Slider'}
-        </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: theme.palette.getContrastText(color),
+              fontWeight: 'bold',
+            }}
+          >
+            {config.label || 'Slider'}
+          </Typography>
+        </Box>
       )}
 
+      {/* Slider element - this is what sliderRef points to */}
       <Box
         ref={sliderRef}
         sx={{
@@ -318,7 +330,9 @@ export default function MidiSlider({
         }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
+        tabIndex={isEditMode ? -1 : 0} // Make it focusable when not in edit mode
       >
+        {/* Fill area */}
         <Box
           sx={{
             position: 'absolute',
@@ -359,6 +373,7 @@ export default function MidiSlider({
           </Typography>
         )}
 
+        {/* Value display */}
         <Typography
           variant="caption"
           sx={{
@@ -375,6 +390,7 @@ export default function MidiSlider({
           {formatDisplayValue(localValue)}
         </Typography>
 
+        {/* MIDI info in edit mode */}
         {isEditMode && config.midi && (
           <Typography 
             variant="caption" 
