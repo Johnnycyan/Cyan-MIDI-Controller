@@ -57,7 +57,6 @@ export default function TopBar({
 
       <Button 
         color="inherit"
-        variant={isEditMode ? "outlined" : "text"}
         startIcon={isEditMode ? <PlayArrowIcon /> : <EditIcon />}
         onClick={toggleEditMode}
         sx={{ ml: 1, p: 2 }}

@@ -92,10 +92,18 @@ const MultiControlEditor = ({
         control.config.sliderConfig = {};
       }
       
+      // Create a new config object that we'll modify
+      const updatedConfig = {...control.config};
+      
+      // If it's orientation, also update at top level for backward compatibility
+      if (key === 'orientation') {
+        updatedConfig.orientation = value;
+      }
+      
       return {
         ...control,
         config: {
-          ...control.config,
+          ...updatedConfig,
           sliderConfig: {
             ...control.config.sliderConfig,
             [key]: value
@@ -408,8 +416,8 @@ const MultiControlEditor = ({
                 <FormControl fullWidth size="small">
                   <InputLabel>Orientation</InputLabel>
                   <Select
-                    value={getCommonConfigValue('orientation', 'vertical')}
-                    onChange={(e) => updateConfig('orientation', e.target.value)}
+                    value={getSliderConfig('orientation', 'vertical')}
+                    onChange={(e) => updateSliderConfig('orientation', e.target.value)}
                     label="Orientation"
                   >
                     <MenuItem value="vertical">Vertical</MenuItem>
