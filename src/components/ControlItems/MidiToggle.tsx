@@ -290,7 +290,6 @@ export default function MidiToggle({
             width: '100%',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
             userSelect: 'none',
             color: checked ? theme.palette.getContrastText(color) : 'text.primary',
             fontWeight: checked ? 'bold' : 'normal',

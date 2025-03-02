@@ -213,7 +213,6 @@ export default function MidiButton({
             width: '100%',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
             userSelect: 'none',
             color: isPressed ? theme.palette.getContrastText(color) : 'text.primary',
             fontWeight: isPressed ? 'bold' : 'normal',

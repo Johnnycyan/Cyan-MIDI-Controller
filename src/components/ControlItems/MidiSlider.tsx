@@ -296,7 +296,6 @@ export default function MidiSlider({
             variant="body2"
             sx={{
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
               color: theme.palette.getContrastText(color),
               fontWeight: 'bold',

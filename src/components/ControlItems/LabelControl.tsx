@@ -58,7 +58,6 @@ export default function LabelControl({
           fontWeight,
           overflow: 'hidden',
           whiteSpace: wrap ? 'normal' : 'nowrap',
-          textOverflow: 'ellipsis',
           wordBreak: 'break-word',
           userSelect: 'none',
         }}

@@ -130,7 +130,6 @@ export default function MidiTextBox({
             userSelect: 'none',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
           }}
         >
           {config.label || 'Value'}

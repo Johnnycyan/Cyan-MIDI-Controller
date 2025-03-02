@@ -107,7 +107,6 @@ export default function TextBoxControl({
           sx={{
             mb: 1,
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
             userSelect: 'none',
           }}
