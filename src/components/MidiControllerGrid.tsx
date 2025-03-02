@@ -1000,22 +1000,58 @@ const handleGridMouseUp = useCallback(() => {
 
       {/* Only show grid snap preview during active dragging */}
       {showPreview && dragPreview && (
-        <Box
-          sx={{
-            position: 'absolute',
-            left: dragPreview.position.x * cellWidth,
-            top: dragPreview.position.y * cellHeight,
-            width: dragPreview.size.w * cellWidth,
-            height: dragPreview.size.h * cellHeight,
-            border: '2px dashed',
-            borderColor: 'primary.main',
-            borderRadius: 1,
-            backgroundColor: 'rgba(33, 150, 243, 0.1)',
-            pointerEvents: 'none',
-            transition: 'none',
-            zIndex: 1,
-          }}
-        />
+        <>
+          {/* Preview box for the primary dragged control */}
+          <Box
+            sx={{
+              position: 'absolute',
+              left: dragPreview.position.x * cellWidth,
+              top: dragPreview.position.y * cellHeight,
+              width: dragPreview.size.w * cellWidth,
+              height: dragPreview.size.h * cellHeight,
+              border: '2px dashed',
+              borderColor: 'primary.main',
+              borderRadius: 1,
+              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              pointerEvents: 'none',
+              transition: 'none',
+              zIndex: 1,
+            }}
+          />
+          
+          {/* Preview boxes for all other selected controls */}
+          {dragState?.isMultiSelected && multiSelectedControlIds && 
+            multiSelectedControlIds
+              .filter(id => id !== dragState.controlId && lastValidPositions[id])
+              .map(id => {
+                const previewPos = lastValidPositions[id].position;
+                const previewSize = lastValidPositions[id].size;
+                const controlItem = controlsById[id];
+                
+                if (!previewPos || !previewSize || !controlItem) return null;
+                
+                return (
+                  <Box
+                    key={`preview-${id}`}
+                    sx={{
+                      position: 'absolute',
+                      left: previewPos.x * cellWidth,
+                      top: previewPos.y * cellHeight,
+                      width: previewSize.w * cellWidth,
+                      height: previewSize.h * cellHeight,
+                      border: '2px dashed',
+                      borderColor: 'primary.main',
+                      borderRadius: 1,
+                      backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                      pointerEvents: 'none',
+                      transition: 'none',
+                      zIndex: 1,
+                    }}
+                  />
+                );
+              })
+          }
+        </>
       )}
 
       {/* Selection box */}
