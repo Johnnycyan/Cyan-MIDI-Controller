@@ -281,47 +281,62 @@ const GridItem = memo(({
   };
 
   return (
-    // Update the Box component's styling to use the borderColor variable
-    <Box
-      ref={itemRef}
-      sx={{
-        position: 'absolute',
-        left,
-        top,
-        width,
-        height,
-        zIndex: isSelected ? 2 : (isMultipleSelected ? 2 : 1),
-        border: isEditMode 
-          ? isSelected 
-            ? '2px dashed primary.main' 
-            : isMultipleSelected 
-              ? `2px dashed ${theme.palette.secondary.main}` 
-              : 'none'
-          : 'none',
-        boxSizing: 'border-box',
-        cursor: isEditMode ? 'move' : 'default',
-        transition: transitionStyle,
-        opacity: isDragging || touchDragActive ? 0.8 : 1,
-        transform: isDragging || touchDragActive ? 'scale(1.02)' : 'scale(1)',
-        pointerEvents: 'auto', // Remove the isDragging condition to always allow interactions
-        touchAction: 'none',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        WebkitTouchCallout: 'none', // Prevent iOS context menu
-      }}
-      onMouseDown={isEditMode ? onDragStart : undefined}
-      onClick={isEditMode ? handleItemSelect : undefined}
-      onContextMenu={handleContextMenu} // Add context menu handler
-      // Add touch event handlers
-      onTouchStart={isEditMode ? createTouchToMouseHandler() : undefined}
-      onTouchMove={isEditMode ? (e) => e.preventDefault() : undefined} // Prevent any default touch handling
-      onTouchEnd={isEditMode ? (e) => e.preventDefault() : undefined}
-      onTouchCancel={isEditMode ? (e) => e.preventDefault() : undefined}
-    >
-      {renderControl()}
-      {renderResizeHandles()}
-      {renderPreview()}
-    </Box>
+    <>
+      {/* Main component */}
+      <Box
+        ref={itemRef}
+        sx={{
+          position: 'absolute',
+          left,
+          top,
+          width,
+          height,
+          zIndex: isSelected ? 2 : (isMultipleSelected ? 2 : 1),
+          boxSizing: 'border-box',
+          cursor: isEditMode ? 'move' : 'default',
+          transition: transitionStyle,
+          opacity: isDragging || touchDragActive ? 0.8 : 1,
+          transform: isDragging || touchDragActive ? 'scale(1.02)' : 'scale(1)',
+          pointerEvents: 'auto',
+          touchAction: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+        }}
+        onMouseDown={isEditMode ? onDragStart : undefined}
+        onClick={isEditMode ? handleItemSelect : undefined}
+        onContextMenu={handleContextMenu}
+        onTouchStart={isEditMode ? createTouchToMouseHandler() : undefined}
+        onTouchMove={isEditMode ? (e) => e.preventDefault() : undefined}
+        onTouchEnd={isEditMode ? (e) => e.preventDefault() : undefined}
+        onTouchCancel={isEditMode ? (e) => e.preventDefault() : undefined}
+      >
+        {renderControl()}
+        {renderResizeHandles()}
+        {renderPreview()}
+      </Box>
+      
+      {/* Separate selection border component that's not clipped by the grid */}
+      {(isSelected || isMultipleSelected) && isEditMode && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: left,
+            top: top,
+            width: width,
+            height: height,
+            pointerEvents: 'none',
+            boxSizing: 'border-box',
+            border: '2px dashed',
+            borderRadius: 1,
+            zIndex: 10,
+            borderColor: isSelected 
+              ? theme.palette.primary.main 
+              : theme.palette.secondary.main,
+          }}
+        />
+      )}
+    </>
   );
 }, (prevProps, nextProps) => {
   // Fix: Update the comparison function to always return a boolean
