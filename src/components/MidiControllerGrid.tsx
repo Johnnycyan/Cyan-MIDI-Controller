@@ -916,6 +916,95 @@ const handleGridMouseUp = useCallback(() => {
     }
   }, [selectionBox?.active, handleGridMouseMove, handleGridMouseUp]);
 
+  // Add touch event handler for starting selection box
+const handleGridTouchStart = useCallback((e: React.TouchEvent) => {
+  if (!isEditMode || e.target !== e.currentTarget) {
+    return;
+  }
+  
+  // Prevent scrolling while creating selection box
+  e.preventDefault();
+
+  // Stop propagation to avoid triggering the grid mouse handler
+  e.stopPropagation();
+  
+  const rect = gridRef.current?.getBoundingClientRect();
+  if (!rect) {
+    return;
+  }
+  
+  const touch = e.touches[0]; // Get first touch point
+  const startX = touch.clientX - rect.left;
+  const startY = touch.clientY - rect.top;
+  
+  console.log("Starting touch selection box at:", { startX, startY });
+  
+  setSelectionBox({
+    startX,
+    startY,
+    endX: startX,
+    endY: startY,
+    active: true
+  });
+}, [isEditMode]);
+
+// Add touch move handler for updating the selection box
+const handleGridTouchMove = useCallback((e: TouchEvent) => {
+  if (!selectionBox?.active || !isEditMode) {
+    return;
+  }
+  
+  // Prevent scrolling
+  e.preventDefault();
+  
+  const rect = gridRef.current?.getBoundingClientRect();
+  if (!rect) {
+    return;
+  }
+  
+  const touch = e.touches[0]; // Get first touch point
+  const currentX = touch.clientX - rect.left;
+  const currentY = touch.clientY - rect.top;
+  
+  setSelectionBox(prev => {
+    if (!prev) return null;
+    return {
+      ...prev,
+      endX: currentX,
+      endY: currentY
+    };
+  });
+}, [selectionBox, isEditMode]);
+
+// Add touch end handler for finalizing the selection
+const handleGridTouchEnd = useCallback((_: TouchEvent) => {
+  // Use the same logic as mouseUp handler
+  handleGridMouseUp();
+}, [handleGridMouseUp]);
+
+// Update effect to add touch event listeners
+useEffect(() => {
+  if (selectionBox?.active) {
+    // Add existing mouse event listeners
+    document.addEventListener('mousemove', handleGridMouseMove);
+    document.addEventListener('mouseup', handleGridMouseUp);
+    
+    // Add touch event listeners
+    document.addEventListener('touchmove', handleGridTouchMove, { passive: false });
+    document.addEventListener('touchend', handleGridTouchEnd);
+    document.addEventListener('touchcancel', handleGridTouchEnd);
+    
+    return () => {
+      // Remove all event listeners
+      document.removeEventListener('mousemove', handleGridMouseMove);
+      document.removeEventListener('mouseup', handleGridMouseUp);
+      document.removeEventListener('touchmove', handleGridTouchMove);
+      document.removeEventListener('touchend', handleGridTouchEnd);
+      document.removeEventListener('touchcancel', handleGridTouchEnd);
+    };
+  }
+}, [selectionBox?.active, handleGridMouseMove, handleGridMouseUp, handleGridTouchMove, handleGridTouchEnd]);
+
   return (
     <Box
       ref={gridRef}
@@ -949,17 +1038,11 @@ const handleGridMouseUp = useCallback(() => {
         }
       }}
       onMouseDown={handleGridMouseDown} // Add this handler
+      onTouchStart={handleGridTouchStart} // Add touch start handler
       onContextMenu={(e) => {
         e.preventDefault(); // Prevent browser context menu
         if (e.currentTarget === e.target && isEditMode) {
           onSelectControl(null, null); // Deselect when right-clicking background
-        }
-      }}
-      onTouchStart={(e) => {
-        // Prevent scrolling while dragging
-        if (isEditMode) {
-          e.preventDefault();
-          e.stopPropagation();
         }
       }}
     >
