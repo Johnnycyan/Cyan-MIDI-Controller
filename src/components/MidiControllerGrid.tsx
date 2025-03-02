@@ -607,7 +607,7 @@ const MidiControllerGrid = ({
         pointerEvents: 'none',
         zIndex: 5
       }}>
-        {selectedMidiOutput ? `MIDI: ${selectedMidiOutput}` : 'No MIDI selected'}
+        {isEditMode ? (selectedMidiOutput ? `MIDI: ${selectedMidiOutput}` : 'No MIDI selected') : ''}
       </Box>
 
       {controls.map(control => (
