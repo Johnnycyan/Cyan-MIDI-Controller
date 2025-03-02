@@ -374,21 +374,28 @@ export default function MidiSlider({
         )}
 
         {/* Value display */}
-        <Typography
-          variant="caption"
+        <Box
           sx={{
             position: 'absolute',
             top: '5px',
             right: '5px',
-            color: fillPercentage > 80 ? theme.palette.getContrastText(color) : 'text.primary',
-            backgroundColor: isEditMode ? 'rgba(0,0,0,0.6)' : 'transparent',
-            padding: isEditMode ? '2px 4px' : 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            padding: '2px 4px',
             borderRadius: 1,
             zIndex: 1,
           }}
         >
-          {formatDisplayValue(localValue)}
-        </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.primary',
+              fontWeight: 'medium',
+              verticalAlign: 'middle',
+            }}
+          >
+            {formatDisplayValue(localValue)}
+          </Typography>
+        </Box>
 
         {/* MIDI info in edit mode */}
         {isEditMode && config.midi && (
