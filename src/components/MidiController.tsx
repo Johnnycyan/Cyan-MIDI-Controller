@@ -126,6 +126,10 @@ export default function MidiController() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const { setTheme } = useAppTheme();
 
+  // Add state for multi-selection
+  const [multiSelectedControlIds, setMultiSelectedControlIds] = useState<string[]>([]);
+  const [multiSelectedControlsType, setMultiSelectedControlsType] = useState<ControlType | null>(null);
+
   // Load presets from local storage on initial load
   useEffect(() => {
     const loadedPresets = loadPresets();
@@ -591,6 +595,36 @@ export default function MidiController() {
     setEditorAnchorEl(element); // Set anchor for tooltip editor
   };
 
+  // Handle multiple selections
+  const handleControlsSelect = (ids: string[]) => {
+    console.log("MidiController received multiple selection:", ids);
+    
+    setMultiSelectedControlIds(ids);
+    
+    // If there are selected controls, determine their common type
+    if (ids.length > 0) {
+      const controlsOfSelection = controls.filter(control => ids.includes(control.id));
+      const firstType = controlsOfSelection[0]?.type;
+      const allSameType = controlsOfSelection.every(control => control.type === firstType);
+      
+      if (allSameType) {
+        console.log("All selected controls are of type:", firstType);
+        setMultiSelectedControlsType(firstType);
+      } else {
+        console.log("Selected controls have mixed types");
+        setMultiSelectedControlsType(null);
+      }
+      
+      // When multiple controls are selected, clear the single selection
+      setSelectedControlId(null);
+      setEditorAnchorEl(null);
+    } else {
+      console.log("No controls selected, clearing multi-selection state");
+      setMultiSelectedControlIds([]);
+      setMultiSelectedControlsType(null);
+    }
+  };
+
   // Use the same handler for long press (for touch devices)
   const handleControlLongPress = (id: string | null, element: HTMLElement | null) => {
     handleControlRightClick(id, element);
@@ -701,14 +735,16 @@ export default function MidiController() {
             rows={gridRows}
             isEditMode={isEditMode}
             selectedControlId={selectedControlId}
-            onSelectControl={handleControlSelect} // Updated to use new handler
-            onRightClickControl={handleControlRightClick} // New prop
-            onLongPressControl={handleControlLongPress} // Add this prop
+            multiSelectedControlIds={multiSelectedControlIds} // Add this
+            onSelectControl={handleControlSelect}
+            onSelectControls={handleControlsSelect} // Add this
+            onRightClickControl={handleControlRightClick}
+            onLongPressControl={handleControlLongPress}
             onUpdateControl={updateControl}
             onMoveControl={moveControl}
             onResizeControl={resizeControl}
             selectedMidiOutput={midiDeviceId}
-            onDragStateChange={handleDragStateChange} // New prop
+            onDragStateChange={handleDragStateChange}
             settings={settings}
           />
         </Box>

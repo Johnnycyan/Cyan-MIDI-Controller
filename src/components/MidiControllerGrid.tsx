@@ -35,6 +35,8 @@ interface MidiControllerGridProps {
   };
   onDragStateChange?: (isDragging: boolean) => void;
   settings: AppSettings;  // Add this prop to the interface
+  onSelectControls?: (ids: string[]) => void; // Add this prop
+  multiSelectedControlIds?: string[]; // Add this prop
 }
 
 const MidiControllerGrid = ({
@@ -45,11 +47,14 @@ const MidiControllerGrid = ({
   selectedControlId,
   onSelectControl,
   onRightClickControl,
+  onLongPressControl,
   onUpdateControl,
   selectedMidiOutput,
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
   onDragStateChange,
-  settings,  // Add settings to destructured props
+  settings,
+  onSelectControls, // Add this prop here
+  multiSelectedControlIds, // Add this prop here
 }: MidiControllerGridProps) => {
   const theme = useTheme();
   const gridRef = useRef<HTMLDivElement>(null);
@@ -73,6 +78,19 @@ const MidiControllerGrid = ({
     position: { x: number; y: number };
     size: { w: number; h: number };
   }>>({});
+
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    active: boolean;
+  } | null>(null);
+
+  const [selectedControls, setSelectedControls] = useState<string[]>([]);
+
+  // Add this state to track if we just finished a selection operation
+  const [justFinishedSelection, setJustFinishedSelection] = useState(false);
 
   // Fix the duplicate preview issue - only show the grid's preview when actively dragging
   const showPreview = dragState !== null && dragPreview !== null;
@@ -560,6 +578,171 @@ const MidiControllerGrid = ({
     };
   }, [dragState, isEditMode]);
 
+  const handleGridMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isEditMode || e.button !== 0 || e.target !== e.currentTarget) {
+      console.log("Grid mouse down ignored:", {
+        isEditMode,
+        button: e.button,
+        targetIsCurrentTarget: e.target === e.currentTarget
+      });
+      return;
+    }
+    
+    const rect = gridRef.current?.getBoundingClientRect();
+    if (!rect) {
+      console.log("No grid ref available");
+      return;
+    }
+    
+    const startX = e.clientX - rect.left;
+    const startY = e.clientY - rect.top;
+    
+    console.log("Starting selection box at:", { startX, startY });
+    
+    setSelectionBox({
+      startX,
+      startY,
+      endX: startX,
+      endY: startY,
+      active: true
+    });
+  }, [isEditMode]);
+
+  const handleGridMouseMove = useCallback((e: MouseEvent) => {
+    if (!selectionBox?.active || !isEditMode) {
+      return;
+    }
+    
+    const rect = gridRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+    
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    // Only log occasionally to avoid console spam
+    if (Math.random() < 0.05) {
+      console.log("Moving selection box to:", { currentX, currentY });
+    }
+    
+    setSelectionBox(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        endX: currentX,
+        endY: currentY
+      };
+    });
+  }, [selectionBox, isEditMode]);
+
+  // Update the handleGridMouseUp function to debug selection and fix any issues
+const handleGridMouseUp = useCallback(() => {
+  if (!selectionBox?.active || !isEditMode) {
+    setSelectionBox(null);
+    return;
+  }
+  
+  console.log("Selection box:", selectionBox);
+  
+  // Check if the selection box is too small (might be an accidental click)
+  const selectionWidth = Math.abs(selectionBox.endX - selectionBox.startX);
+  const selectionHeight = Math.abs(selectionBox.endY - selectionBox.startY);
+  
+  if (selectionWidth < 5 && selectionHeight < 5) {
+    console.log("Selection box too small, treating as a click");
+    setSelectionBox(null);
+    return;
+  }
+  
+  // Convert the selection box coordinates to grid coordinates
+  const gridStartX = selectionBox.startX / cellWidth;
+  const gridStartY = selectionBox.startY / cellHeight;
+  const gridEndX = selectionBox.endX / cellWidth;
+  const gridEndY = selectionBox.endY / cellHeight;
+  
+  // Normalize coordinates (in case of dragging from right to left or bottom to top)
+  const gridLeft = Math.min(gridStartX, gridEndX);
+  const gridTop = Math.min(gridStartY, gridEndY);
+  const gridRight = Math.max(gridStartX, gridEndX);
+  const gridBottom = Math.max(gridStartY, gridEndY);
+  
+  console.log("Selection area in grid coordinates:", 
+    { left: gridLeft, top: gridTop, right: gridRight, bottom: gridBottom });
+  
+  // Log all control positions for debugging
+  console.log("All controls:", controls.map(control => ({
+    id: control.id, 
+    type: control.type,
+    position: {
+      left: control.position.x,
+      top: control.position.y,
+      right: control.position.x + control.size.w,
+      bottom: control.position.y + control.size.h
+    }
+  })));
+  
+  // Find controls that intersect with the selection box
+  const newSelectedControlIds = controls.filter(control => {
+    const controlLeft = control.position.x;
+    const controlTop = control.position.y;
+    const controlRight = control.position.x + control.size.w;
+    const controlBottom = control.position.y + control.size.h;
+    
+    // Use AABB (Axis-Aligned Bounding Box) intersection test
+    const intersects = (
+      controlLeft < gridRight &&
+      controlRight > gridLeft &&
+      controlTop < gridBottom &&
+      controlBottom > gridTop
+    );
+    
+    if (intersects) {
+      console.log(`Control ${control.id} (${control.type}) intersects with selection box`);
+    }
+    
+    return intersects;
+  }).map(control => control.id);
+  
+  console.log("Selected control IDs:", newSelectedControlIds);
+  
+  // Update selected controls state
+  setSelectedControls(newSelectedControlIds);
+  
+  // Notify parent component about the selection
+  if (newSelectedControlIds.length > 0) {
+    console.log("Notifying parent of multiple selection:", newSelectedControlIds);
+    onSelectControls?.(newSelectedControlIds);
+    
+    // Set this flag to prevent immediate selection clearing
+    setJustFinishedSelection(true);
+    
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      setJustFinishedSelection(false);
+    }, 100); // Short delay to ensure the click handler doesn't fire immediately
+  } else {
+    console.log("No controls selected, clearing selection");
+    onSelectControls?.([]);
+    onSelectControl(null, null);
+  }
+  
+  // Reset the selection box
+  setSelectionBox(null);
+}, [selectionBox, isEditMode, cellWidth, cellHeight, controls, onSelectControl, onSelectControls]);
+
+  useEffect(() => {
+    if (selectionBox?.active) {
+      document.addEventListener('mousemove', handleGridMouseMove);
+      document.addEventListener('mouseup', handleGridMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGridMouseMove);
+        document.removeEventListener('mouseup', handleGridMouseUp);
+      };
+    }
+  }, [selectionBox?.active, handleGridMouseMove, handleGridMouseUp]);
+
   return (
     <Box
       ref={gridRef}
@@ -579,10 +762,20 @@ const MidiControllerGrid = ({
         WebkitTouchCallout: 'none',
       }}
       onClick={(e) => {
+        // Check if we just finished a selection - if so, don't clear
+        if (justFinishedSelection) {
+          console.log("Ignoring click because selection just finished");
+          return;
+        }
+        
         if (e.currentTarget === e.target && isEditMode) {
+          console.log("Clicked on grid background, clearing selection");
           onSelectControl(null, null);
+          setSelectedControls([]);
+          onSelectControls?.([]);
         }
       }}
+      onMouseDown={handleGridMouseDown} // Add this handler
       onContextMenu={(e) => {
         e.preventDefault(); // Prevent browser context menu
         if (e.currentTarget === e.target && isEditMode) {
@@ -617,6 +810,7 @@ const MidiControllerGrid = ({
           cellWidth={cellWidth}
           cellHeight={cellHeight}
           isSelected={control.id === selectedControlId}
+          isMultipleSelected={multiSelectedControlIds?.includes(control.id) || false} // Add this prop
           isDragging={dragState?.controlId === control.id}
           isEditMode={isEditMode}
           selectedMidiOutput={selectedMidiOutput}
@@ -649,6 +843,24 @@ const MidiControllerGrid = ({
             pointerEvents: 'none',
             transition: 'none',
             zIndex: 1,
+          }}
+        />
+      )}
+
+      {/* Selection box */}
+      {selectionBox && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: Math.min(selectionBox.startX, selectionBox.endX),
+            top: Math.min(selectionBox.startY, selectionBox.endY),
+            width: Math.abs(selectionBox.endX - selectionBox.startX),
+            height: Math.abs(selectionBox.endY - selectionBox.startY),
+            border: '2px dashed',
+            borderColor: 'secondary.main',
+            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+            pointerEvents: 'none',
+            zIndex: 1000,
           }}
         />
       )}

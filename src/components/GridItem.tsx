@@ -6,6 +6,7 @@ import MidiToggle from './ControlItems/MidiToggle';
 import MidiButton from './ControlItems/MidiButton';
 import LabelControl from './ControlItems/LabelControl';
 import TextBoxControl from './ControlItems/TextBoxControl';
+import theme from '../simplifiedTheme';
 
 interface GridItemProps {
   control: ControlItem;
@@ -29,6 +30,7 @@ interface GridItemProps {
     easing: string;
   };
   settings: AppSettings;
+  isMultipleSelected: boolean; // Add this prop
 }
 
 const GridItem = memo(({
@@ -46,6 +48,7 @@ const GridItem = memo(({
   onContextMenu, // New prop
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
   settings,
+  isMultipleSelected, // Add this prop
 }: GridItemProps) => {
   const { position, size, type } = control;
   const itemRef = useRef<HTMLDivElement>(null);
@@ -278,6 +281,7 @@ const GridItem = memo(({
   };
 
   return (
+    // Update the Box component's styling to use the borderColor variable
     <Box
       ref={itemRef}
       sx={{
@@ -286,8 +290,14 @@ const GridItem = memo(({
         top,
         width,
         height,
-        zIndex: isSelected ? 2 : 1,
-        border: isSelected && isEditMode ? '2px dashed primary.main' : 'none',
+        zIndex: isSelected ? 2 : (isMultipleSelected ? 2 : 1),
+        border: isEditMode 
+          ? isSelected 
+            ? '2px dashed primary.main' 
+            : isMultipleSelected 
+              ? `2px dashed ${theme.palette.secondary.main}` 
+              : 'none'
+          : 'none',
         boxSizing: 'border-box',
         cursor: isEditMode ? 'move' : 'default',
         transition: transitionStyle,
@@ -325,6 +335,7 @@ const GridItem = memo(({
     prevProps.cellWidth === nextProps.cellWidth &&
     prevProps.cellHeight === nextProps.cellHeight &&
     prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isMultipleSelected === nextProps.isMultipleSelected && // Add this line
     prevProps.isDragging === nextProps.isDragging &&
     prevProps.isEditMode === nextProps.isEditMode &&
     prevProps.selectedMidiOutput === nextProps.selectedMidiOutput
