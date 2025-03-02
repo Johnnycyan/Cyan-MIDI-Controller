@@ -608,6 +608,12 @@ export default function MidiController() {
 
   // Handle multiple selections
   const handleControlsSelect = (ids: string[]) => {
+    // Prevent unnecessary updates by comparing with current state
+    if (JSON.stringify(ids) === JSON.stringify(multiSelectedControlIds)) {
+      // Skip update if the selection hasn't changed
+      return;
+    }
+    
     console.log("MidiController received multiple selection:", ids);
     
     setMultiSelectedControlIds(ids);
