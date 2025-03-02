@@ -339,10 +339,16 @@ const MidiControllerGrid = ({
           multiSelectedControlIds.forEach(id => {
             const selectedControl = controlsById[id];
             if (selectedControl && id !== dragState.controlId) {
+              // Calculate the direct delta from mouse movement
+              const originalOffsetX = selectedControl.position.x - control.position.x;
+              const originalOffsetY = selectedControl.position.y - control.position.y;
+              
+              // Apply the same precise movement to all controls
               onUpdateControl(id, {
                 position: {
-                  x: selectedControl.position.x + deltaX,
-                  y: selectedControl.position.y + deltaY
+                  // Use direct calculation for smoother movement
+                  x: (preciseX / cellWidth) + originalOffsetX,
+                  y: (preciseY / cellHeight) + originalOffsetY
                 }
               });
             }
@@ -977,8 +983,12 @@ const handleGridMouseUp = useCallback(() => {
           cellWidth={cellWidth}
           cellHeight={cellHeight}
           isSelected={control.id === selectedControlId}
-          isMultipleSelected={multiSelectedControlIds?.includes(control.id) || false} // Add this prop
-          isDragging={dragState?.controlId === control.id}
+          isMultipleSelected={multiSelectedControlIds?.includes(control.id) || false}
+          isDragging={dragState?.controlId === control.id || 
+                      (dragState?.isMultiSelected && multiSelectedControlIds?.includes(control.id))}
+          isMovingWithMultiSelection={dragState?.isMultiSelected && 
+                                     multiSelectedControlIds?.includes(control.id) && 
+                                     control.id !== dragState.controlId}
           isEditMode={isEditMode}
           selectedMidiOutput={selectedMidiOutput}
           // Only pass preview to the GridItem if we're NOT actively dragging

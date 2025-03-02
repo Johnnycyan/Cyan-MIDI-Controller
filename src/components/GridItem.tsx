@@ -35,6 +35,7 @@ interface GridItemProps {
   };
   settings: AppSettings;
   isMultipleSelected?: boolean;
+  isMovingWithMultiSelection?: boolean; // Add this prop
 }
 
 const GridItem = memo(({
@@ -53,6 +54,7 @@ const GridItem = memo(({
   transitionSettings = { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }, // Default values
   settings,
   isMultipleSelected, // Add this prop
+  isMovingWithMultiSelection, // Add this prop
 }: GridItemProps) => {
   const { position, size, type } = control;
   const itemRef = useRef<HTMLDivElement>(null);
@@ -226,9 +228,7 @@ const GridItem = memo(({
   };
 
   // Create transition string with configurable values
-  const transitionStyle = isDragging 
-    ? 'none' 
-    : `all ${transitionSettings.duration}ms ${transitionSettings.easing}`;
+  const transitionStyle = isMovingWithMultiSelection ? 'none' : (isDragging ? 'none' : `all ${transitionSettings.duration}ms ${transitionSettings.easing}`);
 
   // Handle selection on the wrapper element
   const handleItemSelect = () => {
@@ -300,8 +300,8 @@ const GridItem = memo(({
           boxSizing: 'border-box',
           cursor: isEditMode ? 'move' : 'default',
           transition: transitionStyle,
+          transform: isMovingWithMultiSelection ? `translate(${(control.position.x * cellWidth) - left}px, ${(control.position.y * cellHeight) - top}px)` : 'none',
           opacity: isDragging || touchDragActive ? 0.8 : 1,
-          transform: isDragging || touchDragActive ? 'scale(1.02)' : 'scale(1)',
           pointerEvents: 'auto',
           touchAction: 'none',
           userSelect: 'none',
