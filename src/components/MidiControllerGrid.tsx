@@ -68,6 +68,7 @@ const MidiControllerGrid = ({
     startY: number;
     startPos: { x: number; y: number };
     startSize: { w: number; h: number };
+    isMultiSelected?: boolean; // Add this flag to track multi-selection dragging
   } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragPreview, setDragPreview] = useState<{
@@ -262,6 +263,10 @@ const MidiControllerGrid = ({
         const preciseX = mouseX - dragOffset.x;
         const preciseY = mouseY - dragOffset.y;
 
+        // Calculate mouse movement delta from original position
+        const deltaX = preciseX / cellWidth - control.position.x;
+        const deltaY = preciseY / cellHeight - control.position.y;
+
         // For the snapping preview
         // Calculate mouse position in grid coordinates, considering drag offset
         const mouseGridX = mouseX / cellWidth;
@@ -279,57 +284,165 @@ const MidiControllerGrid = ({
         const clampedX = Math.max(0, Math.min(columns - control.size.w, targetGridX));
         const clampedY = Math.max(0, Math.min(rows - control.size.h, targetGridY));
 
-        // Check if the position would cause an overlap
-        const wouldOverlap = checkOverlap(
-          { x: clampedX, y: clampedY },
-          control.size,
-          controls,
-          control.id
-        );
+        // Calculate rounded delta for all controls in a multi-selection
+        const snapDeltaX = clampedX - Math.round(control.position.x);
+        const snapDeltaY = clampedY - Math.round(control.position.y);
 
-        // Get the last valid position or use findNearestAvailablePosition
-        let previewPosition: Position;
-        if (wouldOverlap) {
-          // Use last valid position if available, otherwise find nearest valid position
-          if (lastValidPositions[control.id]) {
-            previewPosition = lastValidPositions[control.id].position;
-          } else {
-            previewPosition = findNearestAvailablePosition(
-              control.id,
-              clampedX,
-              clampedY,
-              control.size.w,
-              control.size.h
-            );
-          }
-        } else {
-          // No overlap, we can use this position
-          previewPosition = { x: clampedX, y: clampedY };
+        // Handle multi-selected controls movement
+        if (dragState.isMultiSelected && multiSelectedControlIds) {
+          // Check if any control in the selection would go out of bounds or overlap
+          let wouldOverlap = false;
           
-          // Store this as the last valid position
-          setLastValidPositions(prev => ({
-            ...prev,
-            [control.id]: {
-              position: previewPosition,
-              size: { ...control.size }
+          // Store new positions for all controls in the selection
+          const newPositions: Record<string, Position> = {};
+          
+          // First pass: calculate new positions for all selected controls
+          multiSelectedControlIds.forEach(id => {
+            const selectedControl = controlsById[id];
+            if (selectedControl) {
+              // Apply the same delta to all selected controls
+              const newX = Math.round(selectedControl.position.x) + snapDeltaX;
+              const newY = Math.round(selectedControl.position.y) + snapDeltaY;
+              
+              // Check bounds
+              if (newX < 0 || newY < 0 || 
+                  newX + selectedControl.size.w > columns ||
+                  newY + selectedControl.size.h > rows) {
+                wouldOverlap = true;
+              }
+              
+              newPositions[id] = { x: newX, y: newY };
             }
-          }));
-        }
-
-        // Update the preview position
-        setDragPreview({
-          controlId: control.id,
-          position: previewPosition,
-          size: { ...control.size }
-        });
-
-        // Update the actual control with precise position (follows mouse exactly)
-        onUpdateControl(control.id, {
-          position: {
-            x: preciseX / cellWidth,
-            y: preciseY / cellHeight
+          });
+          
+          // Second pass: check for overlaps with non-selected controls
+          if (!wouldOverlap) {
+            for (const id of multiSelectedControlIds) {
+              const selectedControl = controlsById[id];
+              if (selectedControl) {
+                const newPos = newPositions[id];
+                // Check if this control would overlap with any non-selected control
+                if (checkOverlap(
+                  newPos,
+                  selectedControl.size,
+                  controls.filter(c => !multiSelectedControlIds.includes(c.id)),
+                  id
+                )) {
+                  wouldOverlap = true;
+                  break;
+                }
+              }
+            }
           }
-        });
+
+          // Update all selected controls precisely (for fluid movement)
+          multiSelectedControlIds.forEach(id => {
+            const selectedControl = controlsById[id];
+            if (selectedControl && id !== dragState.controlId) {
+              onUpdateControl(id, {
+                position: {
+                  x: selectedControl.position.x + deltaX,
+                  y: selectedControl.position.y + deltaY
+                }
+              });
+            }
+          });
+
+          // Update preview for all selected controls
+          if (!wouldOverlap) {
+            // No overlap, we can use these positions
+            const previewUpdates: Record<string, {position: Position; size: Size}> = {};
+            
+            multiSelectedControlIds.forEach(id => {
+              const selectedControl = controlsById[id];
+              if (selectedControl) {
+                const newPos = newPositions[id];
+                previewUpdates[id] = {
+                  position: newPos,
+                  size: { ...selectedControl.size }
+                };
+              }
+            });
+            
+            // Store as last valid positions for all controls
+            setLastValidPositions(previewUpdates);
+            
+            // Update main drag preview (for the primary dragged control)
+            setDragPreview({
+              controlId: control.id,
+              position: newPositions[control.id],
+              size: { ...control.size }
+            });
+          } else {
+            // Use last valid positions for preview
+            setDragPreview({
+              controlId: control.id,
+              position: lastValidPositions[control.id]?.position || control.position,
+              size: { ...control.size }
+            });
+          }
+          
+          // Update the dragged control's actual position (follows mouse exactly)
+          onUpdateControl(dragState.controlId, {
+            position: {
+              x: preciseX / cellWidth,
+              y: preciseY / cellHeight
+            }
+          });
+        } else {
+          // Single control movement (existing logic)
+          // Check if the position would cause an overlap
+          const wouldOverlap = checkOverlap(
+            { x: clampedX, y: clampedY },
+            control.size,
+            controls,
+            control.id
+          );
+
+          // Get the last valid position or use findNearestAvailablePosition
+          let previewPosition: Position;
+          if (wouldOverlap) {
+            // Use last valid position if available, otherwise find nearest valid position
+            if (lastValidPositions[control.id]) {
+              previewPosition = lastValidPositions[control.id].position;
+            } else {
+              previewPosition = findNearestAvailablePosition(
+                control.id,
+                clampedX,
+                clampedY,
+                control.size.w,
+                control.size.h
+              );
+            }
+          } else {
+            // No overlap, we can use this position
+            previewPosition = { x: clampedX, y: clampedY };
+            
+            // Store this as the last valid position
+            setLastValidPositions(prev => ({
+              ...prev,
+              [control.id]: {
+                position: previewPosition,
+                size: { ...control.size }
+              }
+            }));
+          }
+
+          // Update the preview position
+          setDragPreview({
+            controlId: control.id,
+            position: previewPosition,
+            size: { ...control.size }
+          });
+
+          // Update the actual control with precise position (follows mouse exactly)
+          onUpdateControl(control.id, {
+            position: {
+              x: preciseX / cellWidth,
+              y: preciseY / cellHeight
+            }
+          });
+        }
       } else if (dragState.type === 'resize') {
         // Get precise mouse position in grid coordinates
         const preciseGridX = mouseX / cellWidth;
@@ -465,12 +578,36 @@ const MidiControllerGrid = ({
 
     const handleMouseUp = () => {
       const control = controls.find(c => c.id === dragState?.controlId);
-      if (control && dragPreview) {
-        // On mouse up, snap to the preview position/size
-        onUpdateControl(control.id, {
-          position: { ...dragPreview.position },
-          size: { ...dragPreview.size }
-        });
+      
+      if (control) {
+        if (dragState?.isMultiSelected && multiSelectedControlIds && dragPreview) {
+          // For multi-selection, apply the delta between original and final positions to all controls
+          const mainControlDeltaX = dragPreview.position.x - Math.round(dragState.startPos.x);
+          const mainControlDeltaY = dragPreview.position.y - Math.round(dragState.startPos.y);
+          
+          multiSelectedControlIds.forEach(id => {
+            if (id === control.id) {
+              // Already handled by the main preview
+              onUpdateControl(id, {
+                position: { ...dragPreview.position }
+              });
+            } else {
+              // Apply same delta to all other selected controls
+              const selectedControl = controlsById[id];
+              if (selectedControl && lastValidPositions[id]) {
+                onUpdateControl(id, {
+                  position: lastValidPositions[id].position
+                });
+              }
+            }
+          });
+        } else if (dragPreview) {
+          // For single control, just apply the preview position
+          onUpdateControl(control.id, {
+            position: { ...dragPreview.position },
+            size: { ...dragPreview.size }
+          });
+        }
       }
 
       // Clear states
@@ -513,27 +650,48 @@ const MidiControllerGrid = ({
 
     setDragOffset({ x: offsetX, y: offsetY });
     
+    // Check if we're dragging as part of a multi-selection
+    const isMultiSelected = multiSelectedControlIds?.includes(controlId);
+    
     setDragState({
       controlId,
       type: 'move',
       startX: e.clientX,
       startY: e.clientY,
       startPos: { ...control.position },
-      startSize: { ...control.size }
+      startSize: { ...control.size },
+      isMultiSelected // Add this flag to track multi-selection dragging
     });
     
     onSelectControl(controlId, e.currentTarget as HTMLElement);
+
+    // Track last valid positions for all controls in the selection
+    const validPositions: Record<string, {position: Position; size: Size}> = {};
     
-    setLastValidPositions({
-      [controlId]: {
+    if (isMultiSelected && multiSelectedControlIds) {
+      // Initialize last valid positions for all selected controls
+      multiSelectedControlIds.forEach(id => {
+        const selectedControl = controlsById[id];
+        if (selectedControl) {
+          validPositions[id] = {
+            position: { ...selectedControl.position },
+            size: { ...selectedControl.size }
+          };
+        }
+      });
+    } else {
+      // Just track the single control
+      validPositions[controlId] = {
         position: { ...control.position },
         size: { ...control.size }
-      }
-    });
+      };
+    }
+    
+    setLastValidPositions(validPositions);
 
     // Signal that dragging has started
     onDragStateChange?.(true);
-  }, [isEditMode, controlsById, cellWidth, cellHeight, onSelectControl, onDragStateChange]);
+  }, [isEditMode, controlsById, cellWidth, cellHeight, onSelectControl, onDragStateChange, multiSelectedControlIds]);
 
   // Optimize resize handler with useCallback
   const handleResizeStart = useCallback((e: React.MouseEvent, controlId: string, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => {

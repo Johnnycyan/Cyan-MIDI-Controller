@@ -91,18 +91,6 @@ const MultiControlEditor = ({
     onClose();
   };
 
-  // Determine if all controls have the same value for a given attribute
-  const getCommonValue = <T extends keyof ControlItem>(attribute: T, defaultValue: any = ''): any => {
-    if (selectedControls.length === 0) return defaultValue;
-    
-    const firstValue = selectedControls[0][attribute];
-    const allSame = selectedControls.every(control => 
-      JSON.stringify(control[attribute]) === JSON.stringify(firstValue)
-    );
-    
-    return allSame ? firstValue : '';
-  };
-
   // Update the getCommonAttributeValue function to check both locations
   const getCommonAttributeValue = (attribute: string, defaultValue: any = ''): any => {
     if (selectedControls.length === 0) return defaultValue;

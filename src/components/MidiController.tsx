@@ -636,11 +636,6 @@ export default function MidiController() {
     }
   };
 
-  // Use the same handler for long press (for touch devices)
-  const handleControlLongPress = (id: string | null, element: HTMLElement | null) => {
-    handleControlRightClick(id, element);
-  };
-
   // Handle closing the editor tooltip
   const handleCloseEditor = () => {
     setEditorAnchorEl(null);
@@ -788,7 +783,6 @@ export default function MidiController() {
             onSelectControl={handleControlSelect}
             onSelectControls={handleControlsSelect} // Add this
             onRightClickControl={handleControlRightClick}
-            onLongPressControl={handleControlLongPress}
             onUpdateControl={handleUpdateControl}
             onMoveControl={moveControl}
             onResizeControl={resizeControl}
