@@ -42,6 +42,7 @@ import { AppSettings } from '../types';
 import { useAppTheme } from '../context/ThemeContext';
 import TopBar from './TopBar';
 import ThemeSelector from './ThemeSelector';
+import MultiControlEditor from './MultiControlEditor';
 
 // Create localStorage utility functions
 const savePresets = (presets: MidiControllerPreset[]): void => {
@@ -129,6 +130,8 @@ export default function MidiController() {
   // Add state for multi-selection
   const [multiSelectedControlIds, setMultiSelectedControlIds] = useState<string[]>([]);
   const [multiSelectedControlsType, setMultiSelectedControlsType] = useState<ControlType | null>(null);
+
+  const [multiEditorAnchorEl, setMultiEditorAnchorEl] = useState<HTMLElement | null>(null);
 
   // Load presets from local storage on initial load
   useEffect(() => {
@@ -590,9 +593,15 @@ export default function MidiController() {
   };
 
   // Handle context menu (right-click) for showing the editor
-  const handleControlRightClick = (id: string | null, element: HTMLElement | null) => {
-    setSelectedControlId(id);
-    setEditorAnchorEl(element); // Set anchor for tooltip editor
+  const handleControlRightClick = (id: string | null, element: HTMLElement | null, isMultiSelected?: boolean) => {
+    if (isMultiSelected && multiSelectedControlIds.includes(id || '')) {
+      // Handle right-click on a multi-selected control
+      handleMultiControlsRightClick(element as any, element);
+    } else {
+      // Handle regular single control right-click
+      setSelectedControlId(id);
+      setEditorAnchorEl(element);
+    }
   };
 
   // Handle multiple selections
@@ -657,6 +666,39 @@ export default function MidiController() {
     
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+  };
+
+  const handleMultiControlsRightClick = (_: React.MouseEvent | HTMLElement, element: HTMLElement | null) => {
+    if (!element) return;
+    setMultiEditorAnchorEl(element);
+  };
+
+  const handleCloseMultiEditor = () => {
+    setMultiEditorAnchorEl(null);
+  };
+
+  const updateMultipleControls = (updatedControls: ControlItem[]) => {
+    // Create a map of updated controls by ID
+    const updatedControlsById = updatedControls.reduce((acc, control) => {
+      acc[control.id] = control;
+      return acc;
+    }, {} as Record<string, ControlItem>);
+
+    // Update the main controls array
+    setControls(controls.map(control => {
+      if (updatedControlsById[control.id]) {
+        return updatedControlsById[control.id];
+      }
+      return control;
+    }));
+  };
+
+  const deleteMultipleControls = (ids: string[]) => {
+    // Remove all selected controls
+    const updatedControls = controls.filter(control => !ids.includes(control.id));
+    setControls(updatedControls);
+    setMultiSelectedControlIds([]);
+    setMultiSelectedControlsType(null);
   };
 
   return (
@@ -1071,6 +1113,19 @@ export default function MidiController() {
           <Button onClick={() => setShowPresetManager(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Multi-selection Editor */}
+      {multiSelectedControlIds.length > 0 && multiEditorAnchorEl && (
+        <MultiControlEditor
+          anchorEl={multiEditorAnchorEl}
+          open={Boolean(multiEditorAnchorEl)}
+          onClose={handleCloseMultiEditor}
+          selectedControls={controls.filter(c => multiSelectedControlIds.includes(c.id))}
+          controlsType={multiSelectedControlsType}
+          onUpdateControls={updateMultipleControls}
+          onDeleteControls={deleteMultipleControls}
+        />
+      )}
     </Box>
   );
 }

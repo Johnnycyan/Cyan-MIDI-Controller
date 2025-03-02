@@ -11,15 +11,16 @@
     "preview": "vite preview --https --cert cert.crt --key cert.key"
   },
   "dependencies": {
+    "@ctrl/tinycolor": "^4.0.2",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.8",
     "@mui/material": "^5.14.8",
     "@types/uuid": "^9.0.3",
+    "mui-color-input": "^2.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "uuid": "^9.0.0",
-    "@melloware/coloris": "^0.24.0"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

@@ -23,7 +23,8 @@ interface MidiControllerGridProps {
   isEditMode: boolean;
   selectedControlId: string | null;
   onSelectControl: (id: string | null, element: HTMLElement | null) => void;
-  onRightClickControl?: (id: string | null, element: HTMLElement | null) => void;
+  // Update this line to include isMultiSelected parameter:
+  onRightClickControl?: (id: string | null, element: HTMLElement | null, isMultiSelected?: boolean) => void;
   onLongPressControl?: (id: string | null, element: HTMLElement | null) => void; // New prop
   onUpdateControl: (id: string, updatedValues: Partial<ControlItem>) => void;
   selectedMidiOutput?: string | null;
@@ -87,6 +88,7 @@ const MidiControllerGrid = ({
     active: boolean;
   } | null>(null);
 
+  // @ts-ignore: Used in future implementation
   const [selectedControls, setSelectedControls] = useState<string[]>([]);
 
   // Add this state to track if we just finished a selection operation
@@ -116,15 +118,22 @@ const MidiControllerGrid = ({
   }, [onSelectControl]);
 
   // Handle right-click on control
-  const handleControlRightClick = useCallback((id: string | null, element: HTMLElement | null) => {
-    onRightClickControl?.(id, element);
+  const handleControlRightClick = useCallback((
+    id: string | null, 
+    element: HTMLElement | null, 
+    isMultiSelected?: boolean
+  ) => {
+    onRightClickControl?.(id, element, isMultiSelected);
   }, [onRightClickControl]);
 
   // Handle long press on control
   const handleControlLongPress = useCallback((id: string | null, element: HTMLElement | null) => {
-    // Use the right-click handler for long press, as they serve the same purpose
-    onRightClickControl?.(id, element);
-  }, [onRightClickControl]);
+    // Check if this is a multi-selected control
+    const isMultiSelected = multiSelectedControlIds?.includes(id || '');
+    
+    // Use the right-click handler for long press, passing the multi-selection status
+    onRightClickControl?.(id, element, isMultiSelected);
+  }, [onRightClickControl, multiSelectedControlIds]);
 
   // Memoize grid background style
   const gridBackgroundStyle = useMemo(() => ({
@@ -818,7 +827,11 @@ const handleGridMouseUp = useCallback(() => {
           // This prevents duplicate previews when dragging
           preview={!dragState && dragPreview && dragPreview.controlId === control.id ? dragPreview : null}
           onSelect={(element) => selectControl(control.id, element)}
-          onContextMenu={(_, element) => handleControlRightClick(control.id, element)}
+          onContextMenu={(e, element) => handleControlRightClick(
+            control.id, 
+            element, 
+            multiSelectedControlIds?.includes(control.id)
+          )}
           onLongPress={(element) => handleControlLongPress(control.id, element)} // New prop
           onDragStart={(e) => handleDragStart(e, control.id)}
           onResizeStart={(e, handle) => handleResizeStart(e, control.id, handle)}

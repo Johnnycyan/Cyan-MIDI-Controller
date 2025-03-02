@@ -8,6 +8,12 @@ import LabelControl from './ControlItems/LabelControl';
 import TextBoxControl from './ControlItems/TextBoxControl';
 import theme from '../simplifiedTheme';
 
+// Add these type definitions at the top of the file after imports
+type Position = { x: number; y: number };
+type Size = { w: number; h: number };
+type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+
+// Update the GridItemProps interface
 interface GridItemProps {
   control: ControlItem;
   cellWidth: number;
@@ -16,21 +22,19 @@ interface GridItemProps {
   isDragging?: boolean;
   isEditMode: boolean;
   selectedMidiOutput?: string | null;
-  preview?: {
-    position: { x: number; y: number };
-    size: { w: number; h: number };
-  } | null;
-  onSelect: (element: HTMLElement | null) => void; // Modified to pass element
+  preview?: { position: Position; size: Size } | null;
+  onSelect: (element: HTMLElement | null) => void;
   onDragStart: (e: React.MouseEvent) => void;
-  onResizeStart: (e: React.MouseEvent, handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw') => void;
-  onContextMenu?: (e: React.MouseEvent, element: HTMLElement | null) => void; // New prop
-  onLongPress?: (element: HTMLElement | null) => void; // New prop for long press
+  onResizeStart: (e: React.MouseEvent, handle: ResizeHandle) => void;
+  // Update this line to include isMultiSelected parameter:
+  onContextMenu?: (e: React.MouseEvent, element: HTMLElement | null, isMultiSelected?: boolean) => void;
+  onLongPress?: (element: HTMLElement | null) => void;
   transitionSettings?: {
     duration: number;
     easing: string;
   };
   settings: AppSettings;
-  isMultipleSelected: boolean; // Add this prop
+  isMultipleSelected?: boolean;
 }
 
 const GridItem = memo(({
@@ -238,7 +242,8 @@ const GridItem = memo(({
     e.preventDefault();
     e.stopPropagation();
     if (isEditMode && onContextMenu) {
-      onContextMenu(e, itemRef.current);
+      // Pass whether this item is multi-selected to the context menu handler
+      onContextMenu(e, itemRef.current, isMultipleSelected);
     }
   };
 
