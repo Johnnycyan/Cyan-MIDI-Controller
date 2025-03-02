@@ -264,8 +264,8 @@ const MidiControllerGrid = ({
         const preciseY = mouseY - dragOffset.y;
 
         // Calculate mouse movement delta from original position
-        const deltaX = preciseX / cellWidth - control.position.x;
-        const deltaY = preciseY / cellHeight - control.position.y;
+        // const deltaX = preciseX / cellWidth - control.position.x;
+        // const deltaY = preciseY / cellHeight - control.position.y;
 
         // For the snapping preview
         // Calculate mouse position in grid coordinates, considering drag offset
