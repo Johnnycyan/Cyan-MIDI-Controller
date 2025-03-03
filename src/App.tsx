@@ -34,10 +34,6 @@ function App() {
         // we'll just add a transparent overlay to catch hover events
         styleSheet.insertRule('.cursor-hidden * { pointer-events: auto !important; }', 1);
         
-        // Add a specific rule for hover states that preserves backgrounds
-        // but disables transitions and other hover effects
-        styleSheet.insertRule('* { transition: none !important; }', 2);
-        
         // Disable common interactive effects without changing colors
         styleSheet.insertRule('button:hover, a:hover, [role="button"]:hover { transform: none !important; }', 3);
         

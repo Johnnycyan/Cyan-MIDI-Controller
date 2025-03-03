@@ -169,6 +169,83 @@ export default function MidiButton({
     }
   };
 
+  // Add these handlers to src/components/ControlItems/MidiButton.tsx
+  const handleTouchStart = async (e: React.TouchEvent) => {
+    // In edit mode, delegate the event handling to the parent
+    if (isEditMode) {
+      onSelect?.();
+      return;
+    }
+    
+    // Normal button behavior in non-edit mode
+    e.stopPropagation();
+    setIsPressed(true); // Set visual state
+    setMidiStatus('sent');
+    saveControlValue(control.id, onValue);
+
+    if (config.midi) {
+      try {
+        const success = sendCC(
+          config.midi.channel ?? 1, 
+          config.midi.cc ?? 0, 
+          onValue
+        );
+        if (!success) {
+          setMidiStatus('error');
+          return;
+        }
+        midiSync.notify(
+          config.midi.channel ?? 1, 
+          config.midi.cc ?? 0, 
+          onValue
+        );
+      } catch (err) {
+        console.error('Button error:', err);
+        setMidiStatus('error');
+        return;
+      }
+    }
+    
+    onChange(onValue);
+    
+    // Record the interaction time
+    lastUserInteractionRef.current = Date.now();
+  };
+
+  const handleTouchEnd = async (e: React.TouchEvent) => {
+    // Skip in edit mode
+    if (isEditMode) return;
+    
+    e.stopPropagation();
+    setIsPressed(false); // Reset visual state
+    saveControlValue(control.id, offValue);
+
+    if (config.midi) {
+      try {
+        const success = sendCC(
+          config.midi.channel ?? 1, 
+          config.midi.cc ?? 0, 
+          offValue
+        );
+        if (!success) {
+          setMidiStatus('error');
+          return;
+        }
+        midiSync.notify(
+          config.midi.channel ?? 1, 
+          config.midi.cc ?? 0, 
+          offValue
+        );
+      } catch (err) {
+        console.error('Button error:', err);
+        setMidiStatus('error');
+        return;
+      }
+    }
+    
+    onChange(offValue);
+  };
+
   const color = config.color || theme.palette.primary.main;
 
   return (
@@ -186,7 +263,8 @@ export default function MidiButton({
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
-      // Use pointer-events none in edit mode so parent can receive events
+      onTouchStart={handleTouchStart}  // Add touch handlers
+      onTouchEnd={handleTouchEnd}      // Add touch handlers
       style={isEditMode ? { pointerEvents: isSelected ? 'auto' : 'none' } : undefined}
     >
       <Box 
