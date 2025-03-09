@@ -151,6 +151,13 @@ export default function MidiSlider({
   // Update mouse handler to use common function
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isEditMode) return;
+    
+    // Apply visual feedback for mouse events too
+    if (sliderRef.current) {
+      sliderRef.current.style.transform = 'scale(0.97)';
+      sliderRef.current.style.boxShadow = 'none';
+    }
+    
     handleInteraction(e.clientX, e.clientY);
     
     const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -158,6 +165,12 @@ export default function MidiSlider({
     };
     
     const handleMouseUp = () => {
+      // Reset visual state
+      if (sliderRef.current) {
+        sliderRef.current.style.transform = '';
+        sliderRef.current.style.boxShadow = '';
+      }
+      
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -170,6 +183,13 @@ export default function MidiSlider({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isEditMode) return;
     e.preventDefault(); // Prevent scrolling
+    
+    // Immediately apply the "active" visual state
+    if (sliderRef.current) {
+      sliderRef.current.style.transform = 'scale(0.97)';
+      sliderRef.current.style.boxShadow = 'none';
+    }
+    
     const touch = e.touches[0];
     handleInteraction(touch.clientX, touch.clientY);
 
@@ -180,12 +200,20 @@ export default function MidiSlider({
     };
 
     const handleTouchEnd = () => {
+      // Explicitly reset the "active" visual state
+      if (sliderRef.current) {
+        sliderRef.current.style.transform = '';
+        sliderRef.current.style.boxShadow = '';
+      }
+      
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
     };
 
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd); // Also handle touch cancellation
   };
 
   // Subscribe to sync events
@@ -321,10 +349,12 @@ export default function MidiSlider({
             duration: '100ms'
           }),
           boxShadow: theme.shadows[1],
-          '&:active': {
-            transform: isEditMode ? 'none' : 'scale(0.97)',
-            boxShadow: 'none'
-          },
+          // '@media (hover: hover)': {
+          //   '&:active': {
+          //     transform: isEditMode ? 'none' : 'scale(0.97)',
+          //     boxShadow: 'none'
+          //   }
+          // },
           touchAction: 'none', // Prevent default touch actions
         }}
         onMouseDown={handleMouseDown}
