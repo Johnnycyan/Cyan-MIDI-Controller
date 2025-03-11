@@ -389,26 +389,52 @@ const MultiControlEditor = ({
               <Grid item xs={12}>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Slider Settings</Typography>
               </Grid>
-              
+
               <Grid item xs={6}>
                 <TextField
                   label="Min Value"
                   type="number"
-                  value={getMidiConfig('min', 0)}
-                  onChange={(e) => updateMidiConfig('min', Number(e.target.value))}
+                  value={getMidiConfig('min', '')}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string
+                    if (value === '') {
+                      updateMidiConfig('min', value);
+                      return;
+                    }
+                    // Parse as float to allow decimals
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue)) {
+                      updateMidiConfig('min', value);
+                    }
+                  }}
                   size="small"
                   fullWidth
+                  sx={{ mb: 2 }}
                 />
               </Grid>
-              
+
               <Grid item xs={6}>
                 <TextField
                   label="Max Value"
                   type="number"
-                  value={getMidiConfig('max', 127)}
-                  onChange={(e) => updateMidiConfig('max', Number(e.target.value))}
+                  value={getMidiConfig('max', '')}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string
+                    if (value === '') {
+                      updateMidiConfig('max', value);
+                      return;
+                    }
+                    // Parse as float to allow decimals
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue)) {
+                      updateMidiConfig('max', value);
+                    }
+                  }}
                   size="small"
                   fullWidth
+                  sx={{ mb: 2 }}
                 />
               </Grid>
               
@@ -503,7 +529,7 @@ const MultiControlEditor = ({
                 <TextField
                   label="Value"
                   type="number"
-                  value={getCommonConfigValue('value', 127)}
+                  value={getCommonConfigValue('value', '')}
                   onChange={(e) => updateConfig('value', Number(e.target.value))}
                   size="small"
                   fullWidth
@@ -538,7 +564,7 @@ const MultiControlEditor = ({
                 <TextField
                   label="Off Value"
                   type="number"
-                  value={getCommonConfigValue('offValue', 0)}
+                  value={getCommonConfigValue('offValue', '')}
                   onChange={(e) => updateConfig('offValue', Number(e.target.value))}
                   size="small"
                   fullWidth
@@ -549,7 +575,7 @@ const MultiControlEditor = ({
                 <TextField
                   label="On Value"
                   type="number"
-                  value={getCommonConfigValue('onValue', 127)}
+                  value={getCommonConfigValue('onValue', '')}
                   onChange={(e) => updateConfig('onValue', Number(e.target.value))}
                   size="small"
                   fullWidth

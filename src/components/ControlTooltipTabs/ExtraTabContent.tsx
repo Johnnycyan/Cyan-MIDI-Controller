@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Box, FormControl, Select, MenuItem, Switch, FormControlLabel, Typography, InputLabel, TextField } from '@mui/material';
 import { ControlItem } from '../../types/index';
-import { NumberField, TextField2, ColorField } from './CommonComponents';
+import { TextField2, ColorField } from './CommonComponents';
 
 interface ExtraTabContentProps {
   selectedControl: ControlItem;
@@ -125,32 +125,74 @@ const ExtraTabContent = memo(({
             placeholder="e.g. dB, %, Hz"
           />
 
-          <NumberField
+          <TextField
             label="Decimals"
+            type="number"
             value={selectedControl.config.sliderConfig?.viewMode?.decimalPlaces || 1}
-            onChange={(value) => updateSliderViewMode('decimalPlaces', value)}
-            min={0}
-            max={10}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string
+              if (value === '') {
+                updateSliderViewMode('decimalPlaces', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseInt(value);
+              if (!isNaN(numValue)) {
+                updateSliderViewMode('decimalPlaces', value);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
         </>
       )}
 
       {(selectedControl.type === 'button' || selectedControl.type === 'toggle') && (
-        <>        
-          <NumberField
+        <>
+          <TextField
             label="On Value"
-            value={selectedControl.config.onValue || 127}
-            onChange={(value) => updateControlConfig('onValue', value)}
-            min={0}
-            max={127}
+            type="number"
+            value={selectedControl.config.onValue || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string
+              if (value === '') {
+                updateControlConfig('onValue', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseInt(value);
+              if (!isNaN(numValue)) {
+                updateControlConfig('onValue', value);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
-          
-          <NumberField
+
+          <TextField
             label="Off Value"
-            value={selectedControl.config.offValue || 0}
-            onChange={(value) => updateControlConfig('offValue', value)}
-            min={0}
-            max={127}
+            type="number"
+            value={selectedControl.config.offValue || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string
+              if (value === '') {
+                updateControlConfig('offValue', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseInt(value);
+              if (!isNaN(numValue)) {
+                updateControlConfig('offValue', value);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
         </>
       )}

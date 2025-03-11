@@ -1,7 +1,6 @@
 import { memo } from 'react';
-import { Box, FormControl, Select, MenuItem, InputLabel } from '@mui/material';
+import { Box, FormControl, Select, MenuItem, InputLabel, TextField } from '@mui/material';
 import { ControlItem } from '../../types/index';
-import { NumberField } from './CommonComponents';
 
 interface MidiTabContentProps {
   selectedControl: ControlItem;
@@ -36,30 +35,72 @@ const MidiTabContent = memo(({
         </FormControl>
       </Box>
 
-      <NumberField
+      <TextField
         label="CC Number"
-        value={selectedControl.config.midi?.cc || 1}
-        onChange={(value) => updateMidiConfig('cc', value)}
-        min={0}
-        max={127}
+        type="number"
+        value={selectedControl.config.midi?.cc ?? 1}
+        onChange={(e) => {
+          const value = e.target.value;
+          // Allow empty string
+          if (value === '') {
+            updateMidiConfig('cc', value);
+            return;
+          }
+          // Parse as float to allow decimals
+          const numValue = parseInt(value);
+          if (!isNaN(numValue)) {
+            updateMidiConfig('cc', value);
+          }
+        }}
+        size="small"
+        fullWidth
+        sx={{ mb: 2 }}
       />
 
       {(selectedControl.type === 'textbox') && (
         <>
-          <NumberField
+          <TextField
             label="Min Value"
-            value={selectedControl.config.midi?.min || 0}
-            onChange={(value) => updateMidiConfig('min', value)}
-            min={0}
-            max={127}
+            type="number"
+            value={selectedControl.config.midi?.min ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string
+              if (value === '') {
+                updateMidiConfig('min', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseInt(value);
+              if (!isNaN(numValue)) {
+                updateMidiConfig('min', value);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
-          
-          <NumberField
+
+          <TextField
             label="Max Value"
-            value={selectedControl.config.midi?.max || 127}
-            onChange={(value) => updateMidiConfig('max', value)}
-            min={0}
-            max={127}
+            type="number"
+            value={selectedControl.config.midi?.max ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string
+              if (value === '') {
+                updateMidiConfig('max', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseInt(value);
+              if (!isNaN(numValue)) {
+                updateMidiConfig('max', value);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
         </>
       )}

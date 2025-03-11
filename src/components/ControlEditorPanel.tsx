@@ -328,30 +328,72 @@ function ControlEditorPanel({
             </Select>
           </FormControl>
 
-          <NumberField
+          <TextField
             label="CC Number"
-            value={selectedControl.config.midi?.cc || 1}
-            onChange={(value) => updateMidiConfig('cc', value)}
-            min={0}
-            max={127}
+            type="number"
+            value={selectedControl.config.midi?.cc || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow empty string or just a minus sign
+              if (value === '') {
+                updateMidiConfig('cc', value);
+                return;
+              }
+              // Parse as float to allow decimals
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                updateMidiConfig('cc', value);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{ mb: 2 }}
           />
 
           {(selectedControl.type === 'slider' || selectedControl.type === 'textbox') && (
             <>
-              <NumberField
+              <TextField
                 label="Min Value"
-                value={selectedControl.config.midi?.min || 0}
-                onChange={(value) => updateMidiConfig('min', value)}
-                min={0}
-                max={127}
+                type="number"
+                value={selectedControl.config.midi?.min ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string
+                  if (value === '') {
+                    updateMidiConfig('min', value);
+                    return;
+                  }
+                  // Parse as float to allow decimals
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    updateMidiConfig('min', value);
+                  }
+                }}
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
               />
-              
-              <NumberField
+
+              <TextField
                 label="Max Value"
-                value={selectedControl.config.midi?.max || 127}
-                onChange={(value) => updateMidiConfig('max', value)}
-                min={0}
-                max={127}
+                type="number"
+                value={selectedControl.config.midi?.max ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string
+                  if (value === '') {
+                    updateMidiConfig('max', value);
+                    return;
+                  }
+                  // Parse as float to allow decimals
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    updateMidiConfig('max', value);
+                  }
+                }}
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
               />
             </>
           )}
@@ -422,21 +464,49 @@ function ControlEditorPanel({
           )}
 
           {(selectedControl.type === 'button' || selectedControl.type === 'toggle') && (
-            <>        
-              <NumberField
+            <>
+              <TextField
                 label="On Value"
-                value={selectedControl.config.onValue || 127}
-                onChange={(value) => updateControlConfig('onValue', value)}
-                min={0}
-                max={127}
+                type="number"
+                value={selectedControl.config.onValue || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string
+                  if (value === '') {
+                    updateControlConfig('onValue', value);
+                    return;
+                  }
+                  // Parse as float to allow decimals
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    updateControlConfig('onValue', value);
+                  }
+                }}
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
               />
-              
-              <NumberField
+
+              <TextField
                 label="Off Value"
-                value={selectedControl.config.offValue || 0}
-                onChange={(value) => updateControlConfig('offValue', value)}
-                min={0}
-                max={127}
+                type="number"
+                value={selectedControl.config.offValue || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string
+                  if (value === '') {
+                    updateControlConfig('offValue', value);
+                    return;
+                  }
+                  // Parse as float to allow decimals
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    updateControlConfig('offValue', value);
+                  }
+                }}
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
               />
             </>
           )}

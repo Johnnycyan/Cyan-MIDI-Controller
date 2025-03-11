@@ -244,17 +244,46 @@ const ControlTooltipEditor = memo(({ anchorEl, onClose, open, control, updateCon
               <MidiTabContent {...sharedTabProps} />
               <TextField
                 label="Min Value"
-                type="text" // Changed from "number" to "text"
+                type="number"
                 value={control.config.midi?.min ?? ''}
-                onChange={(e) => handleMidiValueChange('min', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string
+                  if (value === '') {
+                    handleMidiValueChange('min', value);
+                    return;
+                  }
+                  // Parse as float to allow decimals
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    handleMidiValueChange('min', value);
+                  }
+                }}
                 size="small"
+                fullWidth
+                sx={{ mb: 2 }}
               />
+
               <TextField
                 label="Max Value"
-                type="text" // Changed from "number" to "text"
+                type="number"
                 value={control.config.midi?.max ?? ''}
-                onChange={(e) => handleMidiValueChange('max', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string
+                  if (value === '') {
+                    handleMidiValueChange('max', value);
+                    return;
+                  }
+                  // Parse as float to allow decimals
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    handleMidiValueChange('max', value);
+                  }
+                }}
                 size="small"
+                fullWidth
+                sx={{ mb: 2 }}
               />
             </TabPanel>
 
